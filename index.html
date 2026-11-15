@@ -15,6 +15,7 @@
   html, body { margin:0; }
   body { background:var(--bg); color:var(--ink); font:17px/1.6 -apple-system,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif; }
   [hidden] { display:none !important; }
+  @media (max-width:360px) { input[type=date] { font-size:14px !important; padding-left:4px !important; padding-right:4px !important; } }
   .wrap { max-width:560px; margin:0 auto; padding:16px 16px calc(96px + env(safe-area-inset-bottom)); }
   header.top { position:sticky; top:0; z-index:5; background:var(--bg); border-bottom:1px solid var(--line); }
   header.top .in { max-width:560px; margin:0 auto; padding:10px 16px; display:flex; align-items:center; justify-content:space-between; gap:8px; }
@@ -67,7 +68,7 @@
   .neg { color:var(--red); }
   nav.tabs { position:fixed; left:0; right:0; bottom:0; z-index:6; background:var(--card); border-top:1px solid var(--line); padding-bottom:env(safe-area-inset-bottom); }
   nav.tabs .in { max-width:560px; margin:0 auto; display:grid; grid-auto-flow:column; grid-auto-columns:1fr; }
-  nav.tabs button { min-height:64px; border:0; background:none; font-size:17px; font-family:inherit; color:var(--sub); border-top:3px solid transparent; }
+  nav.tabs button { min-height:64px; border:0; background:none; font-size:16px; padding:0 4px; word-break:keep-all; line-height:1.3; font-family:inherit; color:var(--sub); border-top:3px solid transparent; }
   nav.tabs button.on { color:var(--brand); font-weight:700; border-top-color:var(--brand); }
   .datebar { display:grid; grid-template-columns:56px minmax(0,1fr) 56px; gap:8px; align-items:center; margin-bottom:10px; }
   .datebar input { margin:0; text-align:center; min-width:0; }
@@ -95,12 +96,17 @@
   .detail { padding-top:8px; }
   .detail h3 { font-size:15px; margin:14px 0 4px; color:var(--sub); }
   .seg { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:14px; }
-  .seg button { min-height:52px; border:1px solid var(--line); border-radius:12px; background:var(--card); color:var(--sub); font-size:16px; font-family:inherit; }
+  .seg button { word-break:keep-all; line-height:1.3; min-height:52px; border:1px solid var(--line); border-radius:12px; background:var(--card); color:var(--sub); font-size:16px; font-family:inherit; }
   .seg button.on { background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600; }
   .exp { display:flex; justify-content:space-between; gap:10px; padding:10px 0; border-bottom:1px dashed var(--line); align-items:center; }
   .exp:last-child { border-bottom:0; }
   .exp small { color:var(--sub); display:block; font-size:13px; }
   .exp b { font-variant-numeric:tabular-nums; white-space:nowrap; }
+  #dlg { position:fixed; inset:0; z-index:18; background:rgba(74,59,47,.5); display:flex; align-items:center; justify-content:center; padding:16px; }
+  #dlg .box { background:var(--card); border-radius:16px; padding:18px; width:100%; max-width:420px; }
+  #dlg h2 { color:var(--red); }
+  .btn.danger { background:var(--red); }
+  .del { display:block; width:100%; min-height:48px; margin-top:14px; border:1px solid var(--red); border-radius:12px; background:#fff; color:var(--red); font-size:16px; font-weight:600; font-family:inherit; }
   #mask { position:fixed; inset:0; background:rgba(74,59,47,.45); z-index:20; display:flex; align-items:center; justify-content:center; color:#fff; font-size:18px; }
   #toast { position:fixed; left:16px; right:16px; bottom:calc(84px + env(safe-area-inset-bottom)); z-index:30; max-width:528px; margin:0 auto; background:var(--red); color:#fff; padding:14px 16px; border-radius:12px; font-size:16px; box-shadow:0 6px 20px rgba(0,0,0,.2); }
   #viewer { position:fixed; inset:0; background:rgba(40,30,22,.9); z-index:25; display:flex; align-items:center; justify-content:center; padding:16px; }
@@ -179,7 +185,7 @@
     </div>
     <div class="seg" id="qSeg" hidden>
       <button id="qSegR" onclick="qMode('r')">每日回報</button>
-      <button id="qSegE" onclick="qMode('e')">零用金支出</button>
+      <button id="qSegE" onclick="qMode('e')">現場零用金<wbr>支出</button>
     </div>
     <div id="qList"></div>
   </section>
@@ -216,7 +222,7 @@
 
     <div class="card">
       <h2>現金安排</h2>
-      <div class="sum"><span id="rPrevLabel">前次實點零用金</span><b id="rPrev">–</b></div>
+      <div class="sum"><span id="rPrevLabel">前次實點現場零用金</span><b id="rPrev">–</b></div>
       <div class="sum"><span>＋ 今日現金收入</span><b id="rCashEcho">–</b></div>
       <div class="sum"><span>－ 今日支出合計</span><b id="rExp">–</b></div>
       <div class="sum big"><span>存入前抽屜應有現金</span><b id="rBefore">–</b></div>
@@ -224,13 +230,13 @@
       <div class="note yellow" id="rSuggest" style="margin:12px 0"></div>
       <div class="row2">
         <label class="f"><b>現金營收存入</b><input id="rDepRev" class="num" inputmode="numeric" placeholder="沒存填 0"></label>
-        <label class="f"><b>零用金超額存入</b><input id="rDepPetty" class="num" inputmode="numeric" placeholder="沒存填 0"></label>
+        <label class="f"><b>現場零用金超額存入</b><input id="rDepPetty" class="num" inputmode="numeric" placeholder="沒存填 0"></label>
       </div>
       <div class="sum big" style="margin-bottom:12px"><span>存入合計（合併匯一筆）</span><b id="rDepTotal">0</b></div>
       <div class="note red" id="rDepWarn" hidden></div>
       <div id="depositPhotoBox" hidden></div>
 
-      <div class="sum big"><span>存入後零用金應為</span><b id="rExpected">–</b></div>
+      <div class="sum big"><span>存入後現場零用金應為</span><b id="rExpected">–</b></div>
       <p class="hint" style="margin:10px 0 8px">請點鈔後選擇：</p>
       <label class="check"><input type="radio" name="match" id="rMatchY" onchange="recalc()">金額相符</label>
       <label class="check bad"><input type="radio" name="match" id="rMatchN" onchange="recalc()">金額不符</label>
@@ -272,9 +278,9 @@
     <button class="btn ghost" onclick="loadDay('r')">回到每日回報</button>
   </section>
 
-  <!-- 零用金支出 -->
+  <!-- 現場零用金支出 -->
   <section id="v-expense" hidden>
-    <h1>零用金支出登記</h1>
+    <h1>現場零用金支出登記</h1>
     <div class="card">
       <div class="row2">
         <label class="f"><b>日期</b><input id="eDate" type="date" onchange="loadDay('e')"></label>
@@ -301,6 +307,14 @@
 <nav class="tabs" id="tabs" hidden><div class="in" id="tabsIn"></div></nav>
 
 <div id="viewer" hidden onclick="this.hidden=true"><img id="viewerImg" alt="照片"></div>
+<div id="dlg" hidden><div class="box">
+  <h2>刪除紀錄</h2>
+  <p id="dlgText" style="margin:0 0 6px"></p>
+  <p class="hint" style="margin:0 0 12px">刪除後畫面上不會再顯示，相關金額會重新計算。原始資料會保留在試算表的「已刪除紀錄」分頁。</p>
+  <label class="f"><b>請輸入總部 PIN</b><input id="dlgPin" type="password" inputmode="numeric" autocomplete="off"></label>
+  <button class="btn danger" onclick="doDelete()">確定刪除</button>
+  <button class="btn ghost" onclick="closeDelete()">取消</button>
+</div></div>
 <div id="mask" hidden>處理中…</div>
 <div id="toast" hidden onclick="this.hidden=true"></div>
 
@@ -312,7 +326,7 @@ const $ = id => document.getElementById(id);
 const LS = { api: 'chiefrom_api', session: 'chiefrom_session', name: 'chiefrom_name', names: 'chiefrom_names' };
 const VIEWS = ['v-setup', 'v-login', 'v-overview', 'v-monthly', 'v-records', 'v-report', 'v-confirm', 'v-done', 'v-expense'];
 const TABS = {
-  store: [['r', '每日回報'], ['e', '零用金支出'], ['q', '紀錄']],
+  store: [['r', '每日回報'], ['e', '現場零用金<wbr>支出'], ['q', '紀錄']],
   admin: [['o', '每日總覽'], ['q', '紀錄查詢'], ['m', '月報']],
 };
 const VIEW_TAB = { 'v-report': 'r', 'v-confirm': 'r', 'v-done': 'r', 'v-expense': 'e', 'v-records': 'q', 'v-overview': 'o', 'v-monthly': 'm' };
@@ -542,7 +556,7 @@ function fillReport() {
   });
   $('rNote').value = r ? r.note.replace(/^'/, '') : '';
   if (r) { $('rReporter').value = r.reporter; renderNames(); }
-  $('rPrevLabel').textContent = d.prevDate ? `前次實點零用金（${d.prevDate.slice(5).replace('-', '/')}）` : '期初零用金（基本額）';
+  $('rPrevLabel').textContent = d.prevDate ? `前次實點現場零用金（${d.prevDate.slice(5).replace('-', '/')}）` : '期初現場零用金（基本額）';
   recalc();
 }
 function calc() {
@@ -555,7 +569,7 @@ function calc() {
   const expected = before - deposit;
   // 金額相符：實點＝應有；金額不符：店長填實際金額
   const counted = countMatch ? expected : mismatch ? val('rCounted') : null;
-  // 今天可存入：超過基本額的部分以千元往下取整；先算今日現金營收，其餘算零用金超額
+  // 今天可存入：超過基本額的部分以千元往下取整；先算今日現金營收，其餘算現場零用金超額
   const sugTotal = before > s.base ? Math.floor((before - s.base) / 1000) * 1000 : 0;
   const sugRevenue = Math.min(cash, sugTotal), sugPetty = sugTotal - sugRevenue;
   const over = (counted || 0) - s.base;
@@ -577,9 +591,9 @@ function recalc() {
   $('rExp').textContent = fmt(ctx.r.expenseTotal);
   $('rBefore').textContent = fmt(c.before);
   $('rSuggest').innerHTML = c.sugTotal > 0
-    ? `今天可存入 <b>${fmt(c.sugTotal)}</b> 元（現金營收 ${fmt(c.sugRevenue)}＋零用金超額 ${fmt(c.sugPetty)}），店內留 ${fmt(c.before - c.sugTotal)} 元。
+    ? `今天可存入 <b>${fmt(c.sugTotal)}</b> 元（現金營收 ${fmt(c.sugRevenue)}＋現場零用金超額 ${fmt(c.sugPetty)}），店內留 ${fmt(c.before - c.sugTotal)} 元。
        <button class="btn ghost" style="margin-top:10px;min-height:48px;font-size:16px" onclick="useSuggest()">帶入這個金額</button>`
-    : `今天不能存入（零用金要留 ${fmt(ctx.r.settings.base)} 元，多出來的不到一千元）。兩格請填 0。`;
+    : `今天不能存入（現場零用金要留 ${fmt(ctx.r.settings.base)} 元，多出來的不到一千元）。兩格請填 0。`;
   $('rDepTotal').textContent = fmt(c.deposit);
   const warn = depositError(c);
   $('rDepWarn').hidden = !warn; $('rDepWarn').textContent = warn;
@@ -595,7 +609,7 @@ function recalc() {
 }
 
 function depositError(c) {
-  if (c.deposit > c.maxDeposit) return `存入太多：零用金不能低於 ${fmt(ctx.r.settings.base)} 元，今天最多只能存入 ${fmt(c.maxDeposit)} 元。若已匯出請聯絡總部。`;
+  if (c.deposit > c.maxDeposit) return `存入太多：現場零用金不能低於 ${fmt(ctx.r.settings.base)} 元，今天最多只能存入 ${fmt(c.maxDeposit)} 元。若已匯出請聯絡總部。`;
   if (c.deposit % 1000 !== 0) return `存入合計必須是千元整數（目前合計 ${fmt(c.deposit)} 元）。`;
   return '';
 }
@@ -612,29 +626,29 @@ function moneyRows(c, s) {
     <div class="sum"><span>刷卡</span><b>${fmt(c.card)}</b></div>
     <div class="sum"><span>轉帳／電子支付</span><b>${fmt(c.transfer)}</b></div>
     <div class="sum big"><span>總營收</span><b>${fmt(c.total)}</b></div>
-    <div class="sum"><span>前次實點零用金</span><b>${fmt(c.prevCounted)}</b></div>
+    <div class="sum"><span>前次實點現場零用金</span><b>${fmt(c.prevCounted)}</b></div>
     <div class="sum"><span>＋ 今日現金收入</span><b>${fmt(c.cash)}</b></div>
     <div class="sum"><span>－ 今日支出合計</span><b>${fmt(c.expenseTotal)}</b></div>
     <div class="sum"><span>－ 現金營收存入</span><b>${fmt(c.depositRevenue)}</b></div>
-    <div class="sum"><span>－ 零用金超額存入</span><b>${fmt(c.depositPetty)}</b></div>
+    <div class="sum"><span>－ 現場零用金超額存入</span><b>${fmt(c.depositPetty)}</b></div>
     <div class="sum"><span>存入合計（匯一筆）</span><b>${fmt(c.deposit)}</b></div>
-    <div class="sum big"><span>應有零用金</span><b>${fmt(c.expected)}</b></div>
-    <div class="sum big"><span>實點零用金（${c.countMatch ? '金額相符' : '金額不符'}）</span><b>${fmt(c.counted)}</b></div>
+    <div class="sum big"><span>應有現場零用金</span><b>${fmt(c.expected)}</b></div>
+    <div class="sum big"><span>實點現場零用金（${c.countMatch ? '金額相符' : '金額不符'}）</span><b>${fmt(c.counted)}</b></div>
     <div class="sum big"><span>差額</span><b class="${c.diff !== 0 ? 'neg' : ''}">${signed(c.diff)}</b></div>
     <div class="sum"><span>尚可存入金額${s ? `（基本額 ${fmt(s.base)}）` : ''}</span><b>${fmt(c.shouldDeposit)}</b></div>`;
 }
 function noteHtml(c, s) {
   let h = '';
   if (c.diff !== 0) h += `<div class="note red">差額 ${signed(c.diff)} 元：實點金額${c.diff > 0 ? '多於' : '少於'}應有金額。請再點一次，並確認今日支出都已登記。</div>`;
-  if (c.overThreshold) h += `<div class="note red">零用金 ${fmt(c.counted)} 元已超過存款門檻 ${fmt(s.threshold)} 元，還應存入 ${fmt(c.shouldDeposit)} 元。</div>`;
-  if (c.belowBase) h += `<div class="note red">零用金 ${fmt(c.counted)} 元低於基本額 ${fmt(s.base)} 元，請通知總部補足 ${fmt(c.shortfall)} 元。</div>`;
-  if (c.diff === 0 && !c.overThreshold && !c.belowBase) h += `<div class="note green">零用金相符，沒有差額。</div>`;
+  if (c.overThreshold) h += `<div class="note red">現場零用金 ${fmt(c.counted)} 元已超過存款門檻 ${fmt(s.threshold)} 元，還應存入 ${fmt(c.shouldDeposit)} 元。</div>`;
+  if (c.belowBase) h += `<div class="note red">現場零用金 ${fmt(c.counted)} 元低於基本額 ${fmt(s.base)} 元，請通知總部補足 ${fmt(c.shortfall)} 元。</div>`;
+  if (c.diff === 0 && !c.overThreshold && !c.belowBase) h += `<div class="note green">現場零用金相符，沒有差額。</div>`;
   if (c.incomplete && c.incomplete.length) h += `<div class="note yellow">收班檢查有 ${c.incomplete.length} 項未完成：${c.incomplete.map(x => esc(x.label)).join('、')}</div>`;
   return h;
 }
 function toConfirm() {
   const need = [['rReporter', '填報人'], ['rCash', '現金'], ['rCard', '刷卡'], ['rTransfer', '轉帳／電子支付'], ['rNew', '新客數（沒有請填 0）'], ['rOld', '舊客數（沒有請填 0）'],
-    ['rDepRev', '現金營收存入（沒存請填 0）'], ['rDepPetty', '零用金超額存入（沒存請填 0）']];
+    ['rDepRev', '現金營收存入（沒存請填 0）'], ['rDepPetty', '現場零用金超額存入（沒存請填 0）']];
   for (const [id, label] of need) {
     if ($(id).value.trim() === '') { toast('請填寫「' + label + '」'); $(id).focus(); return; }
   }
@@ -682,7 +696,7 @@ async function submitReport() {
   } catch (e) { toast(e.message); }
 }
 
-// ===== 零用金支出 =====
+// ===== 現場零用金支出 =====
 function fillExpenses(d) {
   $('eCount').textContent = d.expenses.length ? `（${d.expenses.length} 筆）` : '';
   $('eTotal').textContent = fmt(d.expenseTotal);
@@ -716,8 +730,8 @@ function flagsOf(r) {
   const f = [];
   if (r.late) f.push(['red', `🔴 逾時回報（${r.submittedAt.slice(0, 10) === r.date ? r.submittedAt.slice(11, 16) : md(r.submittedAt.slice(0, 10)) + ' ' + r.submittedAt.slice(11, 16)} 送出）`]);
   if (r.diff !== 0) f.push(['red', `🔴 差額 ${signed(r.diff)} 元（應有 ${fmt(r.expected)}，實點 ${fmt(r.counted)}）`]);
-  if (r.overThreshold) f.push(['red', `🔴 零用金 ${fmt(r.counted)} 元超過存款門檻，還應存入 ${fmt(r.shouldDeposit)} 元`]);
-  if (r.belowBase) f.push(['red', `🔴 零用金 ${fmt(r.counted)} 元低於基本額，需補足 ${fmt(r.shortfall)} 元`]);
+  if (r.overThreshold) f.push(['red', `🔴 現場零用金 ${fmt(r.counted)} 元超過存款門檻，還應存入 ${fmt(r.shouldDeposit)} 元`]);
+  if (r.belowBase) f.push(['red', `🔴 現場零用金 ${fmt(r.counted)} 元低於基本額，需補足 ${fmt(r.shortfall)} 元`]);
   (r.incomplete || []).forEach(x => f.push(['yellow', `🟡 未完成：${esc(x.label)}（${esc(clean(x.reason))}）`]));
   if (clean(r.note)) f.push(['yellow', `🟡 異常／客訴／需支援：${esc(clean(r.note))}`]);
   return f;
@@ -728,7 +742,7 @@ function metricsHtml(r) {
   return `<div class="grid2">
     <div><span>總營收</span><b>${fmt(r.total)}</b></div>
     <div><span>來客數</span><b>${fmt(r.customers)}</b> <small>新 ${fmt(r.newCustomers)}・舊 ${fmt(r.oldCustomers)}</small></div>
-    <div><span>零用金結餘</span><b>${fmt(r.counted)}</b></div>
+    <div><span>現場零用金結餘</span><b>${fmt(r.counted)}</b></div>
     <div><span>差額</span><b class="${r.diff ? 'neg' : ''}">${signed(r.diff)}</b></div>
     <div><span>今日存入</span><b>${fmt(r.deposit)}</b></div>
     <div><span>收班檢查</span><b class="${n ? 'neg' : ''}">${total - n}／${total}</b> <small>完成</small></div>
@@ -748,7 +762,31 @@ function reportDetailHtml(r) {
 function expenseRowsHtml(list, withMeta) {
   return list.map(x => `
     <div class="exp"><div>${esc(clean(x.item))}<small>${withMeta ? md(x.date) + '・' + esc(x.store) + '・' : ''}${esc(x.category)}・${esc(clean(x.handler))}・
-      <button class="link" style="padding:0" onclick="viewPhoto('${esc(x.photo)}')">看收據</button></small></div><b>${fmt(x.amount)}</b></div>`).join('');
+      <button class="link" style="padding:0" onclick="viewPhoto('${esc(x.photo)}')">看收據</button>${isAdmin() ? `・<button class="link" style="padding:0;color:var(--red)" onclick="askDelete(${delTarget({ type: 'expense', store: x.store, date: x.date, id: x.id, label: `${md(x.date)} ${x.store} 的支出「${clean(x.item)}」${fmt(x.amount)} 元` })})">刪除</button>` : ''}</small></div><b>${fmt(x.amount)}</b></div>`).join('');
+}
+
+// ===== 總部：刪除紀錄 =====
+const isAdmin = () => !!session && session.role === 'admin';
+let delTargets = [], delCurrent = null;
+function delTarget(t) { delTargets.push(t); return delTargets.length - 1; }
+function askDelete(i) {
+  delCurrent = delTargets[i];
+  $('dlgText').textContent = '確定要刪除 ' + delCurrent.label + ' 嗎？';
+  $('dlgPin').value = ''; $('dlg').hidden = false; $('dlgPin').focus();
+}
+function closeDelete() { $('dlg').hidden = true; delCurrent = null; }
+async function doDelete() {
+  const pin = $('dlgPin').value.trim();
+  if (!pin) return toast('請輸入總部 PIN');
+  const t = delCurrent;
+  try {
+    await api('deleteRecord', { type: t.type, store: t.store, date: t.date, id: t.id, pin }, '刪除中…');
+  } catch (e) { toast(/未知的動作/.test(e.message) ? '後端還是舊版，請先更新 Apps Script 並重新部署' : e.message); return; }
+  closeDelete();
+  // 重新載入目前的畫面
+  if (!$('v-overview').hidden) await loadOverview(); else await runQuery();
+  toast('已刪除：' + t.label);
+  $('toast').style.background = 'var(--green)'; setTimeout(() => $('toast').style.background = '', 6100);
 }
 async function toggleDetail(id) {
   const box = $('d-' + id), btn = $('b-' + id), r = details[id];
@@ -760,7 +798,8 @@ async function toggleDetail(id) {
       const list = d.expenses.filter(x => x.store === r.store);
       exp = `<h3>當日支出（${list.length} 筆，合計 ${fmt(list.reduce((a, x) => a + x.amount, 0))}）</h3>` + (expenseRowsHtml(list) || '<p class="hint">沒有登記支出。</p>');
     } catch (e) { toast(e.message); return; }
-    box.innerHTML = reportDetailHtml(r) + exp;
+    box.innerHTML = reportDetailHtml(r) + exp + (isAdmin()
+      ? `<button class="del" onclick="askDelete(${delTarget({ type: 'report', store: r.store, date: r.date, label: `${md(r.date)} ${r.store} 的每日回報` })})">刪除這筆每日回報</button>` : '');
   }
   box.hidden = false; btn.textContent = '收起明細 ▴';
 }
@@ -811,7 +850,7 @@ async function runQuery() {
 function qMode(m) {
   qView = m; details = {};
   $('qSegR').className = m === 'r' ? 'on' : ''; $('qSegE').className = m === 'e' ? 'on' : '';
-  $('qSegR').textContent = `每日回報（${qData.reports.length}）`; $('qSegE').textContent = `零用金支出（${qData.expenses.length}）`;
+  $('qSegR').textContent = `每日回報（${qData.reports.length}）`; $('qSegE').innerHTML = `現場零用金<wbr>支出（${qData.expenses.length}）`;
   if (m === 'r') {
     $('qList').innerHTML = qData.reports.map((r, i) => {
       const f = flagsOf(r);
@@ -844,8 +883,8 @@ function monthCardHtml(o, title, sub, checks, cats) {
     ${row('來客數', fmt(o.customers))}
     ${sub2('新客', fmt(o.newCustomers))}${sub2('舊客', fmt(o.oldCustomers))}${sub2('平均客單價', avg)}
     ${row('存入合計', fmt(o.deposit))}
-    ${sub2('現金營收存入', fmt(o.depositRevenue))}${sub2('零用金超額存入', fmt(o.depositPetty))}
-    ${row('零用金支出合計', fmt(o.expenseTotal))}
+    ${sub2('現金營收存入', fmt(o.depositRevenue))}${sub2('現場零用金超額存入', fmt(o.depositPetty))}
+    ${row('現場零用金支出合計', fmt(o.expenseTotal))}
     ${cats.map(c => sub2(esc(c), fmt(o.expenseByCategory[c] || 0))).join('')}
     ${row('累計差額', signed(o.diff), o.diff ? 'neg' : '')}
     ${row('收班檢查未完成', checks.reduce((a, c) => a + o.incompleteDays[c.key], 0) + ' 天次')}
