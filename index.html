@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f6efe6">
+<title>頭沐 | CHIEFROM 門店每日回報</title>
+<style>
+  :root {
+    --bg:#f6efe6; --card:#fffaf3; --ink:#4a3b2f; --sub:#8a7663; --line:#e2d3bf;
+    --brand:#8f6b46; --brand-soft:#ead9c3; --red:#b5483a; --red-bg:#f9e3de;
+    --yellow-bg:#fbefc9; --green:#5d7a4a; --green-bg:#e6efdc;
+  }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { margin:0; }
+  body { background:var(--bg); color:var(--ink); font:17px/1.6 -apple-system,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif; }
+  [hidden] { display:none !important; }
+  .wrap { max-width:560px; margin:0 auto; padding:16px 16px calc(96px + env(safe-area-inset-bottom)); }
+  header.top { position:sticky; top:0; z-index:5; background:var(--bg); border-bottom:1px solid var(--line); }
+  header.top .in { max-width:560px; margin:0 auto; padding:10px 16px; display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .brand { font-weight:700; letter-spacing:.04em; font-size:17px; }
+  .who { font-size:14px; color:var(--sub); display:flex; align-items:center; gap:8px; }
+  .link { background:none; border:0; color:var(--brand); font-size:14px; padding:8px 4px; text-decoration:underline; font-family:inherit; }
+  h1 { font-size:22px; margin:8px 0 12px; }
+  h2 { font-size:17px; margin:0 0 10px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px; margin-bottom:14px; }
+  label.f { display:block; margin-bottom:12px; font-size:15px; color:var(--sub); }
+  label.f:last-child { margin-bottom:0; }
+  label.f b { color:var(--ink); font-weight:600; }
+  input, select, textarea { display:block; width:100%; margin-top:4px; padding:13px 12px; font-size:18px; color:var(--ink); background:#fff; border:1px solid var(--line); border-radius:12px; font-family:inherit; min-height:52px; }
+  input:focus, select:focus, textarea:focus { outline:2px solid var(--brand); outline-offset:1px; }
+  input[readonly] { background:var(--bg); }
+  textarea { min-height:96px; resize:vertical; }
+  .row2 { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:10px; }
+  .row2 input, .row2 select { min-width:0; }
+  input[type=date] { padding-left:8px; padding-right:8px; font-size:17px; }
+  .hint { font-size:14px; color:var(--sub); margin:4px 0 0; }
+  .btn { display:block; width:100%; min-height:56px; padding:14px; font-size:19px; font-weight:600; border:0; border-radius:14px; background:var(--brand); color:#fff; font-family:inherit; }
+  .btn:active { opacity:.85; }
+  .btn.ghost { background:var(--brand-soft); color:var(--ink); }
+  .btn + .btn { margin-top:10px; }
+  .photo { margin:-4px 0 12px; }
+  .photo input { display:none; }
+  .photo .pick { display:flex; align-items:center; justify-content:center; gap:8px; min-height:52px; border:1.5px dashed var(--brand); border-radius:12px; color:var(--brand); font-size:16px; font-weight:600; background:#fff; padding:8px; }
+  .photo.done .pick { border-style:solid; background:var(--green-bg); border-color:var(--green); color:var(--green); }
+  .photo img { display:block; max-width:100%; max-height:180px; border-radius:10px; margin-top:8px; border:1px solid var(--line); }
+  .check { display:flex; align-items:center; gap:12px; min-height:58px; padding:10px 14px; background:#fff; border:1px solid var(--line); border-radius:12px; font-size:17px; font-weight:600; margin-bottom:8px; }
+  .check input { width:28px; height:28px; min-height:0; margin:0; flex:none; accent-color:var(--green); }
+  .check:has(input:checked) { background:var(--green-bg); border-color:var(--green); color:var(--green); }
+  .check.bad:has(input:checked) { background:var(--red-bg); border-color:var(--red); color:var(--red); }
+  .check.bad input { accent-color:var(--red); }
+  .names { display:flex; flex-wrap:wrap; gap:8px; margin:-4px 0 12px; }
+  .names:empty { display:none; }
+  .names button { min-height:44px; padding:6px 16px; border:1px solid var(--line); border-radius:22px; background:#fff; color:var(--ink); font-size:16px; font-family:inherit; }
+  .names button.on { background:var(--brand-soft); border-color:var(--brand); font-weight:600; }
+  .reason { margin:-2px 0 14px; }
+  .reason input { border-color:var(--brand); }
+  .sum { display:flex; justify-content:space-between; align-items:baseline; padding:7px 0; border-bottom:1px dashed var(--line); gap:12px; }
+  .sum:last-child { border-bottom:0; }
+  .sum span { color:var(--sub); font-size:15px; }
+  .sum b { font-size:18px; font-variant-numeric:tabular-nums; text-align:right; word-break:break-word; }
+  .sum.big b { font-size:22px; }
+  .note { border-radius:12px; padding:12px 14px; font-size:15px; margin-bottom:14px; }
+  .note.red { background:var(--red-bg); color:var(--red); }
+  .note.yellow { background:var(--yellow-bg); }
+  .note.green { background:var(--green-bg); color:var(--green); }
+  .neg { color:var(--red); }
+  nav.tabs { position:fixed; left:0; right:0; bottom:0; z-index:6; background:var(--card); border-top:1px solid var(--line); padding-bottom:env(safe-area-inset-bottom); }
+  nav.tabs .in { max-width:560px; margin:0 auto; display:grid; grid-auto-flow:column; grid-auto-columns:1fr; }
+  nav.tabs button { min-height:64px; border:0; background:none; font-size:17px; font-family:inherit; color:var(--sub); border-top:3px solid transparent; }
+  nav.tabs button.on { color:var(--brand); font-weight:700; border-top-color:var(--brand); }
+  .datebar { display:grid; grid-template-columns:56px minmax(0,1fr) 56px; gap:8px; align-items:center; margin-bottom:10px; }
+  .datebar input { margin:0; text-align:center; min-width:0; }
+  .datebar button { min-height:52px; padding:0; border:1px solid var(--line); border-radius:12px; background:#fff; color:var(--ink); font-size:26px; font-family:inherit; white-space:nowrap; }
+  .datebar .mlabel { text-align:center; font-size:20px; font-weight:700; }
+  .sub2 { display:flex; justify-content:space-between; gap:12px; padding:3px 0 3px 14px; font-size:15px; color:var(--sub); }
+  .sub2 b { color:var(--ink); font-weight:600; font-variant-numeric:tabular-nums; }
+  .shead { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:8px; }
+  .shead b { font-size:20px; }
+  .shead small { color:var(--sub); font-size:14px; display:block; font-weight:400; }
+  .badge { font-size:14px; font-weight:600; padding:4px 12px; border-radius:20px; white-space:nowrap; }
+  .badge.ok { background:var(--green-bg); color:var(--green); }
+  .badge.bad { background:var(--red-bg); color:var(--red); }
+  .badge.wait { background:var(--brand-soft); color:var(--ink); }
+  .flag { font-size:15px; padding:8px 12px; border-radius:10px; margin-bottom:6px; word-break:break-word; }
+  .flag.red { background:var(--red-bg); color:var(--red); }
+  .flag.yellow { background:var(--yellow-bg); }
+  .flag.green { background:var(--green-bg); color:var(--green); }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:10px 0 4px; }
+  .grid2 div { background:#fff; border:1px solid var(--line); border-radius:12px; padding:8px 12px; }
+  .grid2 span { display:block; font-size:13px; color:var(--sub); }
+  .grid2 b { font-size:19px; font-variant-numeric:tabular-nums; }
+  .grid2 small { font-size:13px; color:var(--sub); font-weight:400; }
+  .more { display:block; width:100%; min-height:48px; margin-top:8px; border:0; border-top:1px dashed var(--line); background:none; color:var(--brand); font-size:16px; font-weight:600; font-family:inherit; }
+  .detail { padding-top:8px; }
+  .detail h3 { font-size:15px; margin:14px 0 4px; color:var(--sub); }
+  .seg { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:14px; }
+  .seg button { min-height:52px; border:1px solid var(--line); border-radius:12px; background:var(--card); color:var(--sub); font-size:16px; font-family:inherit; }
+  .seg button.on { background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600; }
+  .exp { display:flex; justify-content:space-between; gap:10px; padding:10px 0; border-bottom:1px dashed var(--line); align-items:center; }
+  .exp:last-child { border-bottom:0; }
+  .exp small { color:var(--sub); display:block; font-size:13px; }
+  .exp b { font-variant-numeric:tabular-nums; white-space:nowrap; }
+  #mask { position:fixed; inset:0; background:rgba(74,59,47,.45); z-index:20; display:flex; align-items:center; justify-content:center; color:#fff; font-size:18px; }
+  #toast { position:fixed; left:16px; right:16px; bottom:calc(84px + env(safe-area-inset-bottom)); z-index:30; max-width:528px; margin:0 auto; background:var(--red); color:#fff; padding:14px 16px; border-radius:12px; font-size:16px; box-shadow:0 6px 20px rgba(0,0,0,.2); }
+  #viewer { position:fixed; inset:0; background:rgba(40,30,22,.9); z-index:25; display:flex; align-items:center; justify-content:center; padding:16px; }
+  #viewer img { max-width:100%; max-height:100%; border-radius:8px; }
+</style>
+</head>
+<body>
+
+<header class="top"><div class="in">
+  <div class="brand">頭沐 | CHIEFROM</div>
+  <div class="who" id="who" hidden><span id="whoName"></span><button class="link" onclick="logout()">登出</button></div>
+</div></header>
+
+<div class="wrap">
+
+  <!-- 首次設定 API 網址（只在未內建網址時出現） -->
+  <section id="v-setup" hidden>
+    <h1>系統設定</h1>
+    <div class="card">
+      <label class="f"><b>Apps Script 網址</b>（結尾是 /exec）
+        <input id="apiUrl" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off">
+      </label>
+      <button class="btn" onclick="saveApi()">儲存</button>
+    </div>
+  </section>
+
+  <!-- 登入 -->
+  <section id="v-login" hidden>
+    <h1>門店每日回報</h1>
+    <div class="card">
+      <label class="f"><b>門店</b><select id="loginStore"></select></label>
+      <label class="f"><b>PIN</b><input id="loginPin" type="password" inputmode="numeric" autocomplete="off" placeholder="請輸入 PIN"></label>
+      <button class="btn" onclick="login()">登入</button>
+    </div>
+    <p class="hint" id="apiReset" hidden style="text-align:center"><button class="link" onclick="resetApi()">重新設定 Apps Script 網址</button></p>
+  </section>
+
+  <!-- 總部：每日總覽 -->
+  <section id="v-overview" hidden>
+    <h1>每日總覽</h1>
+    <div class="card">
+      <div class="datebar">
+        <button onclick="shiftDay(-1)" aria-label="前一天" title="前一天">‹</button>
+        <input id="oDate" type="date" onchange="loadOverview()">
+        <button onclick="shiftDay(1)" aria-label="後一天" title="後一天">›</button>
+      </div>
+      <button class="btn ghost" onclick="loadOverview()">重新整理</button>
+      <p class="hint" id="oSummary" style="margin-top:10px"></p>
+    </div>
+    <div id="oList"></div>
+  </section>
+
+  <!-- 總部：月報 -->
+  <section id="v-monthly" hidden>
+    <h1>月報</h1>
+    <div class="card">
+      <div class="datebar" style="margin-bottom:0">
+        <button onclick="shiftMonth(-1)" aria-label="上個月" title="上個月">‹</button>
+        <div class="mlabel" id="mLabel"></div>
+        <button onclick="shiftMonth(1)" aria-label="下個月" title="下個月">›</button>
+      </div>
+    </div>
+    <div id="mList"></div>
+  </section>
+
+  <!-- 紀錄查詢（總部看全部；店長只看自己門店） -->
+  <section id="v-records" hidden>
+    <h1>紀錄查詢</h1>
+    <div class="card">
+      <label class="f" id="qStoreBox"><b>門店</b><select id="qStore"></select></label>
+      <div class="row2">
+        <label class="f"><b>開始日期</b><input id="qFrom" type="date"></label>
+        <label class="f"><b>結束日期</b><input id="qTo" type="date"></label>
+      </div>
+      <button class="btn" onclick="runQuery()">查詢</button>
+    </div>
+    <div class="seg" id="qSeg" hidden>
+      <button id="qSegR" onclick="qMode('r')">每日回報</button>
+      <button id="qSegE" onclick="qMode('e')">零用金支出</button>
+    </div>
+    <div id="qList"></div>
+  </section>
+
+  <!-- 每日回報：填寫 -->
+  <section id="v-report" hidden>
+    <h1>每日回報</h1>
+    <div class="note yellow" id="rExisting" hidden>這一天已經回報過了。重新送出會覆蓋原本的內容，已上傳的照片不用重傳。</div>
+    <div class="card">
+      <div class="row2">
+        <label class="f"><b>日期</b><input id="rDate" type="date" onchange="loadDay('r')"></label>
+        <label class="f"><b>門店</b><input id="rStore" readonly></label>
+      </div>
+      <label class="f"><b>填報人</b><input id="rReporter" maxlength="30" placeholder="你的名字" oninput="renderNames()"></label>
+      <div class="names" id="rNames" style="margin-bottom:0"></div>
+    </div>
+
+    <div class="card">
+      <h2>營收</h2>
+      <label class="f"><b>現金</b><input id="rCash" class="num" inputmode="numeric" placeholder="0"></label>
+      <label class="f"><b>刷卡</b><input id="rCard" class="num" inputmode="numeric" placeholder="0"></label>
+      <label class="f"><b>轉帳／電子支付</b><input id="rTransfer" class="num" inputmode="numeric" placeholder="0"></label>
+      <div class="sum big"><span>總營收</span><b id="rTotal">0</b></div>
+    </div>
+
+    <div class="card">
+      <h2>來客數</h2>
+      <div class="row2">
+        <label class="f"><b>新客</b><input id="rNew" class="num" inputmode="numeric" placeholder="0"></label>
+        <label class="f"><b>舊客</b><input id="rOld" class="num" inputmode="numeric" placeholder="0"></label>
+      </div>
+      <div class="sum big"><span>來客數合計</span><b id="rCustomers">0</b></div>
+    </div>
+
+    <div class="card">
+      <h2>現金安排</h2>
+      <div class="sum"><span id="rPrevLabel">前次實點零用金</span><b id="rPrev">–</b></div>
+      <div class="sum"><span>＋ 今日現金收入</span><b id="rCashEcho">–</b></div>
+      <div class="sum"><span>－ 今日支出合計</span><b id="rExp">–</b></div>
+      <div class="sum big"><span>存入前抽屜應有現金</span><b id="rBefore">–</b></div>
+
+      <div class="note yellow" id="rSuggest" style="margin:12px 0"></div>
+      <div class="row2">
+        <label class="f"><b>現金營收存入</b><input id="rDepRev" class="num" inputmode="numeric" placeholder="沒存填 0"></label>
+        <label class="f"><b>零用金超額存入</b><input id="rDepPetty" class="num" inputmode="numeric" placeholder="沒存填 0"></label>
+      </div>
+      <div class="sum big" style="margin-bottom:12px"><span>存入合計（合併匯一筆）</span><b id="rDepTotal">0</b></div>
+      <div class="note red" id="rDepWarn" hidden></div>
+      <div id="depositPhotoBox" hidden></div>
+
+      <div class="sum big"><span>存入後零用金應為</span><b id="rExpected">–</b></div>
+      <p class="hint" style="margin:10px 0 8px">請點鈔後選擇：</p>
+      <label class="check"><input type="radio" name="match" id="rMatchY" onchange="recalc()">金額相符</label>
+      <label class="check bad"><input type="radio" name="match" id="rMatchN" onchange="recalc()">金額不符</label>
+      <div id="rMismatch" hidden>
+        <label class="f"><b>實際點鈔金額</b><input id="rCounted" class="num" inputmode="numeric" placeholder="請輸入實際金額"></label>
+        <div class="sum big"><span>差額</span><b id="rDiff">–</b></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>收班檢查</h2>
+      <p class="hint" style="margin:-6px 0 10px">完成請打勾；沒完成的項目要寫原因。</p>
+      <div id="rChecks"></div>
+    </div>
+
+    <div class="card">
+      <label class="f"><b>異常／客訴／需支援</b>（選填）<textarea id="rNote" maxlength="2000" placeholder="沒有可留空"></textarea></label>
+    </div>
+
+    <button class="btn" onclick="toConfirm()">下一步：確認內容</button>
+  </section>
+
+  <!-- 每日回報：確認 -->
+  <section id="v-confirm" hidden>
+    <h1>確認回報內容</h1>
+    <div id="cNotes"></div>
+    <div class="card" id="cMoney"></div>
+    <div class="card" id="cBasic"></div>
+    <button class="btn" onclick="submitReport()">確認送出</button>
+    <button class="btn ghost" onclick="show('v-report')">返回修改</button>
+  </section>
+
+  <!-- 每日回報：完成 -->
+  <section id="v-done" hidden>
+    <h1>回報完成</h1>
+    <div class="note green" id="dMsg"></div>
+    <div id="dNotes"></div>
+    <div class="card" id="dMoney"></div>
+    <button class="btn ghost" onclick="loadDay('r')">回到每日回報</button>
+  </section>
+
+  <!-- 零用金支出 -->
+  <section id="v-expense" hidden>
+    <h1>零用金支出登記</h1>
+    <div class="card">
+      <div class="row2">
+        <label class="f"><b>日期</b><input id="eDate" type="date" onchange="loadDay('e')"></label>
+        <label class="f"><b>門店</b><input id="eStore" readonly></label>
+      </div>
+      <label class="f"><b>經手人</b><input id="eHandler" maxlength="30" placeholder="你的名字" oninput="renderNames()"></label>
+      <div class="names" id="eNames"></div>
+      <label class="f"><b>品項</b><input id="eItem" maxlength="100" placeholder="例如：洗髮精補充包"></label>
+      <div class="row2">
+        <label class="f"><b>類別</b><select id="eCategory"></select></label>
+        <label class="f"><b>金額</b><input id="eAmount" class="num" inputmode="numeric" placeholder="0"></label>
+      </div>
+      <div id="receiptPhotoBox"></div>
+      <button class="btn" onclick="submitExpense()">登記這筆支出</button>
+    </div>
+    <div class="card">
+      <h2>當日已登記 <span id="eCount"></span></h2>
+      <div id="eList"></div>
+      <div class="sum big" style="margin-top:6px"><span>支出合計</span><b id="eTotal">0</b></div>
+    </div>
+  </section>
+</div>
+
+<nav class="tabs" id="tabs" hidden><div class="in" id="tabsIn"></div></nav>
+
+<div id="viewer" hidden onclick="this.hidden=true"><img id="viewerImg" alt="照片"></div>
+<div id="mask" hidden>處理中…</div>
+<div id="toast" hidden onclick="this.hidden=true"></div>
+
+<script>
+// ===== 設定：正式上線時把 Apps Script 的 /exec 網址填在這裡 =====
+const API_URL = 'https://script.google.com/macros/s/AKfycbzZXDHPCshCDxJc0052l1xEI0IsS9lDTp-rV6-Az51u9dquCRx5BsTuBIb8chrNmrO5/exec';
+
+const $ = id => document.getElementById(id);
+const LS = { api: 'chiefrom_api', session: 'chiefrom_session', name: 'chiefrom_name', names: 'chiefrom_names' };
+const VIEWS = ['v-setup', 'v-login', 'v-overview', 'v-monthly', 'v-records', 'v-report', 'v-confirm', 'v-done', 'v-expense'];
+const TABS = {
+  store: [['r', '每日回報'], ['e', '零用金支出'], ['q', '紀錄']],
+  admin: [['o', '每日總覽'], ['q', '紀錄查詢'], ['m', '月報']],
+};
+const VIEW_TAB = { 'v-report': 'r', 'v-confirm': 'r', 'v-done': 'r', 'v-expense': 'e', 'v-records': 'q', 'v-overview': 'o', 'v-monthly': 'm' };
+const PHOTOS = {
+  deposit: { box: 'depositPhotoBox', label: '匯款證明' },
+  receipt: { box: 'receiptPhotoBox', label: '收據照片' },
+};
+let session = null;          // {token, role, store, settings, categories, expires}
+let ctx = { r: null, e: null }; // 每日回報／支出各自的當日資訊
+let photos = {};             // key -> dataURL（新選的照片）
+let draft = null;            // 確認畫面的內容
+
+let month = '';              // 月報目前顯示的月份 yyyy-MM
+let queried = false;         // 紀錄頁是否已查過
+let details = {};            // 展開明細用：id -> 回報資料
+let qData = null, qView = 'r';
+const clean = t => String(t == null ? '' : t).replace(/^'/, ''); // 去掉防公式用的單引號
+function addDays(d, n) {
+  const p = d.split('-'), x = new Date(Date.UTC(+p[0], +p[1] - 1, +p[2] + n));
+  return x.toISOString().slice(0, 10);
+}
+const md = d => d.slice(5).replace('-', '/');
+const fmt = n => Number(n || 0).toLocaleString('en-US');
+const signed = n => (n > 0 ? '+' : '') + fmt(n);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const apiUrl = () => API_URL || localStorage.getItem(LS.api) || '';
+function localToday() {
+  const p = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Taipei' }).format(new Date());
+  return p; // yyyy-MM-dd
+}
+
+function show(id) {
+  VIEWS.forEach(v => $(v).hidden = v !== id);
+  const cur = VIEW_TAB[id];
+  $('tabs').hidden = !(session && cur);
+  if (session && cur) $('tabsIn').innerHTML = TABS[session.role].map(([k, label]) =>
+    `<button class="${k === cur ? 'on' : ''}" onclick="tab('${k}')">${label}</button>`).join('');
+  $('who').hidden = !session;
+  if (session) $('whoName').textContent = session.store;
+  window.scrollTo(0, 0);
+}
+let toastTimer;
+function toast(msg) {
+  $('toast').textContent = msg; $('toast').hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => $('toast').hidden = true, 6000);
+}
+function busy(on, text) { $('mask').textContent = text || '處理中…'; $('mask').hidden = !on; }
+
+async function api(action, body, text) {
+  busy(true, text);
+  try {
+    let res;
+    try {
+      // 用 text/plain 送出可避免 CORS 預檢
+      res = await fetch(apiUrl(), { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(Object.assign({ action, token: session && session.token }, body)) });
+    } catch (e) { throw new Error('連線失敗，請檢查網路後再試一次'); }
+    let json;
+    try { json = await res.json(); } catch (e) { throw new Error('系統回應異常，請稍後再試'); }
+    if (!json.ok) {
+      if (/登入已失效/.test(json.error)) { logout(); }
+      throw new Error(json.error);
+    }
+    return json.data;
+  } finally { busy(false); }
+}
+
+// ===== 啟動、登入 =====
+async function start() {
+  if (!apiUrl()) return show('v-setup');
+  $('apiReset').hidden = !!API_URL;
+  try { session = JSON.parse(localStorage.getItem(LS.session)); } catch (e) { session = null; }
+  if (session && session.expires > Date.now() && session.checks) return enter();
+  session = null;
+  show('v-login');
+  try {
+    const d = await api('stores', {}, '載入中…');
+    $('loginStore').innerHTML = d.stores.concat(d.admins).map(s => `<option>${esc(s)}</option>`).join('');
+  } catch (e) { toast(e.message); }
+}
+function saveApi() {
+  const u = $('apiUrl').value.trim();
+  if (!/^https:\/\/script\.google\.com\/.+\/exec$/.test(u)) return toast('網址格式不對，應該以 https://script.google.com/ 開頭、/exec 結尾');
+  localStorage.setItem(LS.api, u); start();
+}
+function resetApi() { localStorage.removeItem(LS.api); $('apiUrl').value = ''; show('v-setup'); }
+async function login() {
+  const pin = $('loginPin').value.trim();
+  if (!$('loginStore').value) return toast('請選擇門店');
+  if (!pin) return toast('請輸入 PIN');
+  try {
+    session = null;
+    session = await api('login', { store: $('loginStore').value, pin }, '登入中…');
+    localStorage.setItem(LS.session, JSON.stringify(session));
+    $('loginPin').value = '';
+    enter();
+  } catch (e) { toast(e.message); }
+}
+function logout() {
+  session = null; localStorage.removeItem(LS.session);
+  ctx = { r: null, e: null }; photos = {};
+  start();
+}
+function enter() {
+  const today = localToday();
+  queried = false; details = {};
+  $('qFrom').value = addDays(today, -6); $('qTo').value = today; $('qFrom').max = today; $('qTo').max = today;
+  $('qList').innerHTML = ''; $('qSeg').hidden = true;
+  $('qStoreBox').hidden = session.role !== 'admin';
+  if (session.role === 'admin') {
+    $('oDate').value = today; $('oDate').max = today; month = today.slice(0, 7);
+    $('qStore').innerHTML = '<option value="">全部門店</option>';
+    loadOverview();
+    api('stores', {}).then(d => { $('qStore').innerHTML += d.stores.map(n => `<option>${esc(n)}</option>`).join(''); }).catch(() => {});
+    return;
+  }
+  ['r', 'e'].forEach(k => { $(k + 'Date').value = today; $(k + 'Date').max = today; $(k + 'Store').value = session.store; });
+  const name = savedNames()[0] || '';
+  $('rReporter').value = name; $('eHandler').value = name;
+  renderNames();
+  $('eCategory').innerHTML = '<option value="">請選擇</option>' + session.categories.map(c => `<option>${esc(c)}</option>`).join('');
+  $('rChecks').innerHTML = session.checks.map(c => `
+    <label class="check"><input type="checkbox" id="chk-${c.key}" onchange="toggleReason('${c.key}')">${esc(c.label)}</label>
+    <div class="reason" id="why-${c.key}"><input id="reason-${c.key}" maxlength="300" placeholder="未完成原因（必填）"></div>`).join('');
+  Object.keys(PHOTOS).forEach(renderPhoto);
+  loadDay('r');
+}
+// ===== 記住最近用過的名字（存在這台裝置上，最多 5 個） =====
+function savedNames() {
+  try {
+    const list = JSON.parse(localStorage.getItem(LS.names) || '[]');
+    if (Array.isArray(list) && list.length) return list;
+  } catch (e) {}
+  const old = localStorage.getItem(LS.name); // 舊版只記一個名字
+  return old ? [old] : [];
+}
+function rememberName(name) {
+  const list = [name].concat(savedNames().filter(n => n !== name)).slice(0, 5);
+  try { localStorage.setItem(LS.names, JSON.stringify(list)); } catch (e) {}
+  renderNames();
+}
+function renderNames() {
+  const list = savedNames();
+  [['rNames', 'rReporter'], ['eNames', 'eHandler']].forEach(([box, input]) => {
+    $(box).innerHTML = list.length < 2 && list[0] === $(input).value ? '' : list.map((n, i) =>
+      `<button type="button" class="${n === $(input).value ? 'on' : ''}" onclick="pickName('${input}', ${i})">${esc(n)}</button>`).join('');
+  });
+}
+function pickName(input, i) { $(input).value = savedNames()[i] || ''; renderNames(); }
+function toggleReason(key) { $('why-' + key).hidden = $('chk-' + key).checked; }
+function tab(k) {
+  if (k === 'o') loadOverview();
+  else if (k === 'm') loadMonthly();
+  else if (k === 'q') { show('v-records'); if (!queried) runQuery(); }
+  else if (k === 'e') { show('v-expense'); if (!ctx.e) loadDay('e'); }
+  else if (ctx.r) show('v-report'); else loadDay('r');
+}
+
+// ===== 照片欄位 =====
+function renderPhoto(key, existing) {
+  const p = PHOTOS[key], has = photos[key];
+  const text = has ? '已選擇照片，點此可重選' : existing ? '已上傳，點此可重新上傳' : '拍照／選擇' + p.label + '（必附）';
+  $(p.box).innerHTML = `<div class="photo ${has || existing ? 'done' : ''}">
+    <label><input type="file" accept="image/*" onchange="pickPhoto('${key}', this)"><span class="pick">${has || existing ? '✓ ' : ''}${text}</span></label>
+    ${has ? `<img src="${has}" alt="${p.label}預覽">` : ''}</div>`;
+}
+function existingPhoto(key) {
+  const r = ctx.r && ctx.r.report;
+  return !!r && { deposit: r.depositPhoto }[key];
+}
+function pickPhoto(key, input) {
+  const file = input.files[0];
+  if (!file) return;
+  const url = URL.createObjectURL(file), img = new Image();
+  img.onload = () => {
+    // 縮到長邊 1600px 的 JPEG，手機上傳較快
+    const scale = Math.min(1, 1600 / Math.max(img.width, img.height));
+    const c = document.createElement('canvas');
+    c.width = Math.round(img.width * scale); c.height = Math.round(img.height * scale);
+    const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
+    g.drawImage(img, 0, 0, c.width, c.height);
+    photos[key] = c.toDataURL('image/jpeg', 0.82);
+    URL.revokeObjectURL(url);
+    renderPhoto(key, existingPhoto(key));
+  };
+  img.onerror = () => { URL.revokeObjectURL(url); toast('無法讀取這張照片，請換一張或改用截圖'); };
+  img.src = url;
+}
+async function viewPhoto(url) {
+  try { const d = await api('photo', { url }, '載入照片…'); $('viewerImg').src = d.dataUrl; $('viewer').hidden = false; }
+  catch (e) { toast(e.message); }
+}
+
+// ===== 數字欄位：只收數字 =====
+document.addEventListener('input', e => {
+  if (!e.target.classList.contains('num')) return;
+  const v = e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+  if (v !== e.target.value) e.target.value = v;
+  if (e.target.id[0] === 'r') recalc();
+});
+const val = id => $(id).value === '' ? null : Number($(id).value);
+
+// ===== 載入當日資訊 =====
+async function loadDay(k) {
+  const date = $(k + 'Date').value || localToday();
+  try {
+    const d = await api('dayContext', { date }, '載入中…');
+    ctx[k] = d;
+    if (d.settings) session.settings = d.settings;
+    if (k === 'r') fillReport(); else fillExpenses(d);
+    show(k === 'r' ? 'v-report' : 'v-expense');
+  } catch (e) { toast(e.message); }
+}
+function fillReport() {
+  const d = ctx.r, r = d.report;
+  delete photos.deposit; $('depositPhotoBox').hidden = true; // 讓 recalc 重新畫出匯款證明欄位
+  $('rExisting').hidden = !r;
+  const set = (id, v) => $(id).value = r ? v : '';
+  set('rCash', r && r.cash); set('rCard', r && r.card); set('rTransfer', r && r.transfer); set('rNew', r && r.newCustomers); set('rOld', r && r.oldCustomers);
+  set('rDepRev', r && r.depositRevenue); set('rDepPetty', r && r.depositPetty);
+  $('rMatchY').checked = !!r && r.countMatch; $('rMatchN').checked = !!r && !r.countMatch;
+  $('rCounted').value = r && !r.countMatch ? r.counted : '';
+  session.checks.forEach(c => {
+    $('chk-' + c.key).checked = !!r && r[c.key + 'Done'];
+    $('reason-' + c.key).value = r ? r[c.key + 'Reason'].replace(/^'/, '') : '';
+    toggleReason(c.key);
+  });
+  $('rNote').value = r ? r.note.replace(/^'/, '') : '';
+  if (r) { $('rReporter').value = r.reporter; renderNames(); }
+  $('rPrevLabel').textContent = d.prevDate ? `前次實點零用金（${d.prevDate.slice(5).replace('-', '/')}）` : '期初零用金（基本額）';
+  recalc();
+}
+function calc() {
+  const d = ctx.r, s = d.settings;
+  const cash = val('rCash') || 0, card = val('rCard') || 0, transfer = val('rTransfer') || 0;
+  const depositRevenue = val('rDepRev') || 0, depositPetty = val('rDepPetty') || 0;
+  const countMatch = $('rMatchY').checked, mismatch = $('rMatchN').checked;
+  const deposit = depositRevenue + depositPetty;
+  const before = d.prevCounted + cash - d.expenseTotal;   // 存入前抽屜應有現金
+  const expected = before - deposit;
+  // 金額相符：實點＝應有；金額不符：店長填實際金額
+  const counted = countMatch ? expected : mismatch ? val('rCounted') : null;
+  // 今天可存入：超過基本額的部分以千元往下取整；先算今日現金營收，其餘算零用金超額
+  const sugTotal = before > s.base ? Math.floor((before - s.base) / 1000) * 1000 : 0;
+  const sugRevenue = Math.min(cash, sugTotal), sugPetty = sugTotal - sugRevenue;
+  const over = (counted || 0) - s.base;
+  return { cash, card, transfer, depositRevenue, depositPetty, deposit, counted, countMatch, mismatch, total: cash + card + transfer, expected,
+    before, sugTotal, sugRevenue, sugPetty,
+    diff: counted == null ? null : counted - expected,
+    shouldDeposit: over > 0 ? Math.floor(over / 1000) * 1000 : 0,
+    overThreshold: counted != null && counted > s.threshold,
+    maxDeposit: sugTotal,
+    belowBase: counted != null && counted < s.base, shortfall: counted != null && counted < s.base ? s.base - counted : 0 };
+}
+function recalc() {
+  if (!ctx.r) return;
+  const c = calc();
+  $('rTotal').textContent = fmt(c.total);
+  $('rCustomers').textContent = fmt((val('rNew') || 0) + (val('rOld') || 0));
+  $('rPrev').textContent = fmt(ctx.r.prevCounted);
+  $('rCashEcho').textContent = fmt(c.cash);
+  $('rExp').textContent = fmt(ctx.r.expenseTotal);
+  $('rBefore').textContent = fmt(c.before);
+  $('rSuggest').innerHTML = c.sugTotal > 0
+    ? `今天可存入 <b>${fmt(c.sugTotal)}</b> 元（現金營收 ${fmt(c.sugRevenue)}＋零用金超額 ${fmt(c.sugPetty)}），店內留 ${fmt(c.before - c.sugTotal)} 元。
+       <button class="btn ghost" style="margin-top:10px;min-height:48px;font-size:16px" onclick="useSuggest()">帶入這個金額</button>`
+    : `今天不能存入（零用金要留 ${fmt(ctx.r.settings.base)} 元，多出來的不到一千元）。兩格請填 0。`;
+  $('rDepTotal').textContent = fmt(c.deposit);
+  const warn = depositError(c);
+  $('rDepWarn').hidden = !warn; $('rDepWarn').textContent = warn;
+  $('rMismatch').hidden = !c.mismatch;
+  $('rExpected').textContent = fmt(c.expected);
+  $('rDiff').textContent = c.diff == null ? '–' : signed(c.diff);
+  $('rDiff').className = c.diff ? 'neg' : '';
+  const needDeposit = c.deposit > 0;
+  if ($('depositPhotoBox').hidden === needDeposit) {
+    $('depositPhotoBox').hidden = !needDeposit;
+    if (needDeposit) renderPhoto('deposit', existingPhoto('deposit'));
+  }
+}
+
+function depositError(c) {
+  if (c.deposit > c.maxDeposit) return `存入太多：零用金不能低於 ${fmt(ctx.r.settings.base)} 元，今天最多只能存入 ${fmt(c.maxDeposit)} 元。若已匯出請聯絡總部。`;
+  if (c.deposit % 1000 !== 0) return `存入合計必須是千元整數（目前合計 ${fmt(c.deposit)} 元）。`;
+  return '';
+}
+function useSuggest() {
+  const c = calc();
+  $('rDepRev').value = c.sugRevenue; $('rDepPetty').value = c.sugPetty;
+  recalc();
+}
+
+// ===== 確認與送出 =====
+function moneyRows(c, s) {
+  return `
+    <div class="sum"><span>現金</span><b>${fmt(c.cash)}</b></div>
+    <div class="sum"><span>刷卡</span><b>${fmt(c.card)}</b></div>
+    <div class="sum"><span>轉帳／電子支付</span><b>${fmt(c.transfer)}</b></div>
+    <div class="sum big"><span>總營收</span><b>${fmt(c.total)}</b></div>
+    <div class="sum"><span>前次實點零用金</span><b>${fmt(c.prevCounted)}</b></div>
+    <div class="sum"><span>＋ 今日現金收入</span><b>${fmt(c.cash)}</b></div>
+    <div class="sum"><span>－ 今日支出合計</span><b>${fmt(c.expenseTotal)}</b></div>
+    <div class="sum"><span>－ 現金營收存入</span><b>${fmt(c.depositRevenue)}</b></div>
+    <div class="sum"><span>－ 零用金超額存入</span><b>${fmt(c.depositPetty)}</b></div>
+    <div class="sum"><span>存入合計（匯一筆）</span><b>${fmt(c.deposit)}</b></div>
+    <div class="sum big"><span>應有零用金</span><b>${fmt(c.expected)}</b></div>
+    <div class="sum big"><span>實點零用金（${c.countMatch ? '金額相符' : '金額不符'}）</span><b>${fmt(c.counted)}</b></div>
+    <div class="sum big"><span>差額</span><b class="${c.diff !== 0 ? 'neg' : ''}">${signed(c.diff)}</b></div>
+    <div class="sum"><span>尚可存入金額${s ? `（基本額 ${fmt(s.base)}）` : ''}</span><b>${fmt(c.shouldDeposit)}</b></div>`;
+}
+function noteHtml(c, s) {
+  let h = '';
+  if (c.diff !== 0) h += `<div class="note red">差額 ${signed(c.diff)} 元：實點金額${c.diff > 0 ? '多於' : '少於'}應有金額。請再點一次，並確認今日支出都已登記。</div>`;
+  if (c.overThreshold) h += `<div class="note red">零用金 ${fmt(c.counted)} 元已超過存款門檻 ${fmt(s.threshold)} 元，還應存入 ${fmt(c.shouldDeposit)} 元。</div>`;
+  if (c.belowBase) h += `<div class="note red">零用金 ${fmt(c.counted)} 元低於基本額 ${fmt(s.base)} 元，請通知總部補足 ${fmt(c.shortfall)} 元。</div>`;
+  if (c.diff === 0 && !c.overThreshold && !c.belowBase) h += `<div class="note green">零用金相符，沒有差額。</div>`;
+  if (c.incomplete && c.incomplete.length) h += `<div class="note yellow">收班檢查有 ${c.incomplete.length} 項未完成：${c.incomplete.map(x => esc(x.label)).join('、')}</div>`;
+  return h;
+}
+function toConfirm() {
+  const need = [['rReporter', '填報人'], ['rCash', '現金'], ['rCard', '刷卡'], ['rTransfer', '轉帳／電子支付'], ['rNew', '新客數（沒有請填 0）'], ['rOld', '舊客數（沒有請填 0）'],
+    ['rDepRev', '現金營收存入（沒存請填 0）'], ['rDepPetty', '零用金超額存入（沒存請填 0）']];
+  for (const [id, label] of need) {
+    if ($(id).value.trim() === '') { toast('請填寫「' + label + '」'); $(id).focus(); return; }
+  }
+  const c = calc();
+  if (depositError(c)) return toast(depositError(c));
+  if (c.deposit > 0 && !photos.deposit && !existingPhoto('deposit')) return toast('今日有存入，請上傳「匯款證明」');
+  if (!c.countMatch && !c.mismatch) return toast('請點鈔後選擇「金額相符」或「金額不符」');
+  if (c.mismatch && c.counted == null) { toast('請填寫「實際點鈔金額」'); $('rCounted').focus(); return; }
+  const checks = {}; c.incomplete = [];
+  for (const k of session.checks) {
+    const done = $('chk-' + k.key).checked, reason = done ? '' : $('reason-' + k.key).value.trim();
+    if (!done && !reason) { toast('「' + k.label + '」沒有打勾，請填寫未完成原因'); $('reason-' + k.key).focus(); return; }
+    checks[k.key + 'Done'] = done; checks[k.key + 'Reason'] = reason;
+    if (!done) c.incomplete.push({ label: k.label, reason });
+  }
+  const s = ctx.r.settings;
+  Object.assign(c, { prevCounted: ctx.r.prevCounted, expenseTotal: ctx.r.expenseTotal });
+  draft = { date: $('rDate').value, reporter: $('rReporter').value.trim(), cash: c.cash, card: c.card, transfer: c.transfer,
+    newCustomers: val('rNew'), oldCustomers: val('rOld'), depositRevenue: c.depositRevenue, depositPetty: c.depositPetty, deposit: c.deposit, countMatch: c.countMatch, counted: c.counted, note: $('rNote').value.trim() };
+  Object.assign(draft, checks);
+  $('cNotes').innerHTML = noteHtml(c, s);
+  $('cMoney').innerHTML = moneyRows(c, s);
+  $('cBasic').innerHTML = `
+    <div class="sum"><span>日期</span><b>${esc(draft.date)}</b></div>
+    <div class="sum"><span>門店</span><b>${esc(session.store)}</b></div>
+    <div class="sum"><span>填報人</span><b>${esc(draft.reporter)}</b></div>
+    <div class="sum"><span>來客數</span><b>新客 ${fmt(draft.newCustomers)}・舊客 ${fmt(draft.oldCustomers)}・合計 ${fmt(draft.newCustomers + draft.oldCustomers)}</b></div>
+    ${session.checks.map(k => `<div class="sum"><span>${esc(k.label)}</span><b class="${draft[k.key + 'Done'] ? '' : 'neg'}">${draft[k.key + 'Done'] ? '✓ 完成' : '未完成：' + esc(draft[k.key + 'Reason'])}</b></div>`).join('')}
+    <div class="sum"><span>異常／客訴／需支援</span><b>${esc(draft.note) || '無'}</b></div>`;
+  show('v-confirm');
+}
+async function submitReport() {
+  const send = {};
+  if (draft.deposit > 0 && photos.deposit) send.deposit = photos.deposit;
+  try {
+    const d = await api('submitReport', Object.assign({ photos: send }, draft), '上傳中，請稍候…');
+    rememberName(draft.reporter);
+    if (!$('eHandler').value) $('eHandler').value = draft.reporter;
+    ctx.r = null; ctx.e = null;
+    queried = false;
+    $('dMsg').textContent = `${d.report.date}　${session.store}　${d.updated ? '已更新回報' : '已完成回報'}` + (d.report.late ? '（已超過截止時間 ' + d.settings.deadline + '）' : '');
+    $('dNotes').innerHTML = noteHtml(d.report, d.settings).replace(/<div class="note green">.*?<\/div>/, '');
+    $('dMoney').innerHTML = moneyRows(d.report, d.settings);
+    show('v-done');
+  } catch (e) { toast(e.message); }
+}
+
+// ===== 零用金支出 =====
+function fillExpenses(d) {
+  $('eCount').textContent = d.expenses.length ? `（${d.expenses.length} 筆）` : '';
+  $('eTotal').textContent = fmt(d.expenseTotal);
+  $('eList').innerHTML = d.expenses.length ? d.expenses.map(x => `
+    <div class="exp"><div>${esc(x.item.replace(/^'/, ''))}<small>${esc(x.category)}・${esc(x.handler)}・
+      <button class="link" style="padding:0" onclick="viewPhoto('${esc(x.photo)}')">看收據</button></small></div><b>${fmt(x.amount)}</b></div>`).join('')
+    : '<p class="hint">這一天還沒有登記支出。</p>';
+}
+async function submitExpense() {
+  const handler = $('eHandler').value.trim(), item = $('eItem').value.trim(), amount = val('eAmount');
+  if (!handler) return toast('請填寫「經手人」');
+  if (!item) return toast('請填寫「品項」');
+  if (!$('eCategory').value) return toast('請選擇「類別」');
+  if (!amount) return toast('請填寫「金額」');
+  if (!photos.receipt) return toast('請上傳「收據照片」');
+  try {
+    const d = await api('addExpense', { date: $('eDate').value, handler, item, category: $('eCategory').value, amount, photo: photos.receipt }, '上傳中，請稍候…');
+    rememberName(handler); queried = false;
+    if (!$('rReporter').value) $('rReporter').value = handler;
+    $('eItem').value = ''; $('eAmount').value = ''; $('eCategory').value = '';
+    delete photos.receipt; renderPhoto('receipt');
+    ctx.e = Object.assign(ctx.e || {}, d); ctx.r = null; // 回報頁下次進入時重新載入支出合計
+    fillExpenses(d);
+    toast('已登記：' + item + ' ' + fmt(amount) + ' 元');
+    $('toast').style.background = 'var(--green)'; setTimeout(() => $('toast').style.background = '', 6100);
+  } catch (e) { toast(e.message); }
+}
+
+// ===== 燈號與明細（總覽、紀錄共用） =====
+function flagsOf(r) {
+  const f = [];
+  if (r.late) f.push(['red', `🔴 逾時回報（${r.submittedAt.slice(0, 10) === r.date ? r.submittedAt.slice(11, 16) : md(r.submittedAt.slice(0, 10)) + ' ' + r.submittedAt.slice(11, 16)} 送出）`]);
+  if (r.diff !== 0) f.push(['red', `🔴 差額 ${signed(r.diff)} 元（應有 ${fmt(r.expected)}，實點 ${fmt(r.counted)}）`]);
+  if (r.overThreshold) f.push(['red', `🔴 零用金 ${fmt(r.counted)} 元超過存款門檻，還應存入 ${fmt(r.shouldDeposit)} 元`]);
+  if (r.belowBase) f.push(['red', `🔴 零用金 ${fmt(r.counted)} 元低於基本額，需補足 ${fmt(r.shortfall)} 元`]);
+  (r.incomplete || []).forEach(x => f.push(['yellow', `🟡 未完成：${esc(x.label)}（${esc(clean(x.reason))}）`]));
+  if (clean(r.note)) f.push(['yellow', `🟡 異常／客訴／需支援：${esc(clean(r.note))}`]);
+  return f;
+}
+const flagHtml = f => f.map(([lv, t]) => `<div class="flag ${lv}">${t}</div>`).join('');
+function metricsHtml(r) {
+  const n = (r.incomplete || []).length, total = session.checks.length;
+  return `<div class="grid2">
+    <div><span>總營收</span><b>${fmt(r.total)}</b></div>
+    <div><span>來客數</span><b>${fmt(r.customers)}</b> <small>新 ${fmt(r.newCustomers)}・舊 ${fmt(r.oldCustomers)}</small></div>
+    <div><span>零用金結餘</span><b>${fmt(r.counted)}</b></div>
+    <div><span>差額</span><b class="${r.diff ? 'neg' : ''}">${signed(r.diff)}</b></div>
+    <div><span>今日存入</span><b>${fmt(r.deposit)}</b></div>
+    <div><span>收班檢查</span><b class="${n ? 'neg' : ''}">${total - n}／${total}</b> <small>完成</small></div>
+  </div>`;
+}
+function reportDetailHtml(r) {
+  return `<h3>營收與現金</h3>${moneyRows(r)}
+    <h3>回報內容</h3>
+    <div class="sum"><span>填報人</span><b>${esc(clean(r.reporter))}</b></div>
+    <div class="sum"><span>來客數</span><b>新客 ${fmt(r.newCustomers)}・舊客 ${fmt(r.oldCustomers)}・合計 ${fmt(r.customers)}</b></div>
+    ${session.checks.map(k => `<div class="sum"><span>${esc(k.label)}</span><b class="${r[k.key + 'Done'] ? '' : 'neg'}">${r[k.key + 'Done'] ? '✓ 完成' : '未完成：' + esc(clean(r[k.key + 'Reason']))}</b></div>`).join('')}
+    <div class="sum"><span>異常／客訴／需支援</span><b>${esc(clean(r.note)) || '無'}</b></div>
+    <div class="sum"><span>送出時間</span><b>${esc(r.submittedAt)}</b></div>
+    ${r.updatedAt && r.updatedAt !== r.submittedAt ? `<div class="sum"><span>最後修改</span><b>${esc(r.updatedAt)}</b></div>` : ''}
+    <div class="sum"><span>匯款證明</span><b>${r.depositPhoto ? `<button class="link" style="padding:0;font-size:17px" onclick="viewPhoto('${esc(r.depositPhoto)}')">看照片</button>` : '無（未存入）'}</b></div>`;
+}
+function expenseRowsHtml(list, withMeta) {
+  return list.map(x => `
+    <div class="exp"><div>${esc(clean(x.item))}<small>${withMeta ? md(x.date) + '・' + esc(x.store) + '・' : ''}${esc(x.category)}・${esc(clean(x.handler))}・
+      <button class="link" style="padding:0" onclick="viewPhoto('${esc(x.photo)}')">看收據</button></small></div><b>${fmt(x.amount)}</b></div>`).join('');
+}
+async function toggleDetail(id) {
+  const box = $('d-' + id), btn = $('b-' + id), r = details[id];
+  if (!box.hidden) { box.hidden = true; btn.textContent = '看明細 ▾'; return; }
+  if (!box.innerHTML) {
+    let exp = '';
+    try {
+      const d = await api('records', { store: r.store, from: r.date, to: r.date }, '載入明細…');
+      const list = d.expenses.filter(x => x.store === r.store);
+      exp = `<h3>當日支出（${list.length} 筆，合計 ${fmt(list.reduce((a, x) => a + x.amount, 0))}）</h3>` + (expenseRowsHtml(list) || '<p class="hint">沒有登記支出。</p>');
+    } catch (e) { toast(e.message); return; }
+    box.innerHTML = reportDetailHtml(r) + exp;
+  }
+  box.hidden = false; btn.textContent = '收起明細 ▴';
+}
+function detailToggleHtml(id, r) {
+  details[id] = r;
+  return `<button class="more" id="b-${id}" onclick="toggleDetail('${id}')">看明細 ▾</button><div class="detail" id="d-${id}" hidden></div>`;
+}
+
+// ===== 總部：每日總覽 =====
+function shiftDay(n) {
+  const d = addDays($('oDate').value || localToday(), n);
+  if (d > localToday()) return;
+  $('oDate').value = d; loadOverview();
+}
+async function loadOverview() {
+  const date = $('oDate').value || localToday();
+  let d;
+  try { d = await api('dashboard', { date }, '載入中…'); } catch (e) { toast(e.message); return; }
+  details = {};
+  const done = d.rows.filter(x => x.reported);
+  $('oSummary').innerHTML = `${md(d.date)}　已回報 <b>${done.length}／${d.rows.length}</b> 間　全店總營收 <b>${fmt(done.reduce((a, x) => a + x.report.total, 0))}</b>　來客 <b>${fmt(done.reduce((a, x) => a + x.report.customers, 0))}</b>　（${d.now.slice(11, 16)} 更新）`;
+  $('oList').innerHTML = d.rows.map((x, i) => {
+    const r = x.report, dl = x.settings.deadline;
+    if (!r) {
+      return `<div class="card"><div class="shead"><b>${esc(x.store)}</b><span class="badge ${x.flags.late ? 'bad' : 'wait'}">未回報</span></div>
+        ${x.flags.late ? `<div class="flag red">🔴 已過截止時間 ${dl}，尚未回報</div>` : `<p class="hint">尚未回報（截止時間 ${dl}）</p>`}
+        ${x.expenseTotal ? `<p class="hint">當日已登記支出 ${fmt(x.expenseTotal)} 元</p>` : ''}</div>`;
+    }
+    const f = flagsOf(r);
+    return `<div class="card"><div class="shead"><b>${esc(x.store)}<small>${esc(clean(r.reporter))}・${r.submittedAt.slice(11, 16)} 送出</small></b>
+        <span class="badge ${r.late ? 'bad' : 'ok'}">${r.late ? '逾時回報' : '已回報'}</span></div>
+      ${f.length ? flagHtml(f) : '<div class="flag green">✓ 沒有異常</div>'}
+      ${metricsHtml(r)}${detailToggleHtml('o' + i, r)}</div>`;
+  }).join('') || '<div class="card">「設定」分頁裡沒有啟用中的門店。</div>';
+  show('v-overview');
+}
+
+// ===== 紀錄查詢 =====
+async function runQuery() {
+  const from = $('qFrom').value, to = $('qTo').value;
+  if (!from || !to) return toast('請選擇開始與結束日期');
+  if (from > to) return toast('開始日期不能晚於結束日期');
+  try { qData = await api('records', { store: $('qStore').value, from, to }, '查詢中…'); } catch (e) { toast(e.message); return; }
+  queried = true;
+  $('qSeg').hidden = false;
+  qMode(qView);
+}
+function qMode(m) {
+  qView = m; details = {};
+  $('qSegR').className = m === 'r' ? 'on' : ''; $('qSegE').className = m === 'e' ? 'on' : '';
+  $('qSegR').textContent = `每日回報（${qData.reports.length}）`; $('qSegE').textContent = `零用金支出（${qData.expenses.length}）`;
+  if (m === 'r') {
+    $('qList').innerHTML = qData.reports.map((r, i) => {
+      const f = flagsOf(r);
+      return `<div class="card"><div class="shead"><b>${md(r.date)}　${esc(r.store)}<small>${esc(clean(r.reporter))}</small></b>
+          <span class="badge ${f.some(x => x[0] === 'red') ? 'bad' : f.length ? 'wait' : 'ok'}">${f.length ? f.length + ' 項提醒' : '正常'}</span></div>
+        ${flagHtml(f)}${metricsHtml(r)}${detailToggleHtml('q' + i, r)}</div>`;
+    }).join('') || '<div class="card">這段期間沒有回報紀錄。</div>';
+  } else {
+    const sum = qData.expenses.reduce((a, x) => a + x.amount, 0);
+    $('qList').innerHTML = qData.expenses.length
+      ? `<div class="card">${expenseRowsHtml(qData.expenses, true)}<div class="sum big" style="margin-top:6px"><span>支出合計</span><b>${fmt(sum)}</b></div></div>`
+      : '<div class="card">這段期間沒有支出紀錄。</div>';
+  }
+}
+
+// ===== 總部：月報 =====
+function shiftMonth(n) {
+  const p = month.split('-'), d = new Date(Date.UTC(+p[0], +p[1] - 1 + n, 1));
+  const m = d.toISOString().slice(0, 7);
+  if (m > localToday().slice(0, 7)) return;
+  month = m; loadMonthly();
+}
+function monthCardHtml(o, title, sub, checks, cats) {
+  const avg = o.customers ? fmt(Math.round(o.revenue / o.customers)) : '–';
+  const row = (label, v, cls) => `<div class="sum big"><span>${label}</span><b class="${cls || ''}">${v}</b></div>`;
+  const sub2 = (label, v) => `<div class="sub2"><span>${label}</span><b>${v}</b></div>`;
+  return `<div class="card"><div class="shead"><b>${esc(title)}</b><span class="badge wait">${sub}</span></div>
+    ${row('營收合計', fmt(o.revenue))}
+    ${sub2('現金', fmt(o.cash))}${sub2('刷卡', fmt(o.card))}${sub2('轉帳／電子支付', fmt(o.transfer))}
+    ${row('來客數', fmt(o.customers))}
+    ${sub2('新客', fmt(o.newCustomers))}${sub2('舊客', fmt(o.oldCustomers))}${sub2('平均客單價', avg)}
+    ${row('存入合計', fmt(o.deposit))}
+    ${sub2('現金營收存入', fmt(o.depositRevenue))}${sub2('零用金超額存入', fmt(o.depositPetty))}
+    ${row('零用金支出合計', fmt(o.expenseTotal))}
+    ${cats.map(c => sub2(esc(c), fmt(o.expenseByCategory[c] || 0))).join('')}
+    ${row('累計差額', signed(o.diff), o.diff ? 'neg' : '')}
+    ${row('收班檢查未完成', checks.reduce((a, c) => a + o.incompleteDays[c.key], 0) + ' 天次')}
+    ${checks.map(c => sub2(esc(c.label), o.incompleteDays[c.key] + ' 天')).join('')}</div>`;
+}
+async function loadMonthly() {
+  let d;
+  try { d = await api('monthly', { month }, '載入中…'); } catch (e) { toast(e.message); return; }
+  $('mLabel').textContent = `${+d.month.slice(0, 4)} 年 ${+d.month.slice(5)} 月`;
+  // 全店合計
+  const keys = ['days', 'revenue', 'cash', 'card', 'transfer', 'newCustomers', 'oldCustomers', 'customers', 'depositRevenue', 'depositPetty', 'deposit', 'expenseTotal', 'diff'];
+  const all = { expenseByCategory: {}, incompleteDays: {} };
+  keys.forEach(k => all[k] = d.rows.reduce((a, o) => a + o[k], 0));
+  d.categories.forEach(c => all.expenseByCategory[c] = d.rows.reduce((a, o) => a + (o.expenseByCategory[c] || 0), 0));
+  d.checks.forEach(c => all.incompleteDays[c.key] = d.rows.reduce((a, o) => a + o.incompleteDays[c.key], 0));
+  $('mList').innerHTML = all.days || all.expenseTotal
+    ? monthCardHtml(all, '全店合計', `${d.rows.length} 間門店`, d.checks, d.categories)
+      + d.rows.map(o => monthCardHtml(o, o.store, `回報 ${o.days} 天`, d.checks, d.categories)).join('')
+    : '<div class="card">這個月還沒有任何回報或支出紀錄。</div>';
+  show('v-monthly');
+}
+
+start();
+</script>
+</body>
+</html>
