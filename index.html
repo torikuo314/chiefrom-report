@@ -212,6 +212,22 @@
     </div>
 
     <div class="card">
+      <h2>儲值金購買</h2>
+      <p class="hint" style="margin:-6px 0 10px">今天有客人買儲值嗎？</p>
+      <div class="seg" style="margin-bottom:0">
+        <button type="button" id="rStoredN" class="on" onclick="setStored(false)">沒有</button>
+        <button type="button" id="rStoredY" onclick="setStored(true)">有</button>
+      </div>
+      <div id="rStoredBox" hidden style="margin-top:14px">
+        <div class="row2">
+          <label class="f"><b>儲值金－現金</b><input id="rStoredCash" class="num" inputmode="numeric" placeholder="0"></label>
+          <label class="f"><b>儲值金－刷卡</b><input id="rStoredCard" class="num" inputmode="numeric" placeholder="0"></label>
+        </div>
+        <p class="hint">客人用轉帳買儲值不用填。儲值金不算進總營收。</p>
+      </div>
+    </div>
+
+    <div class="card">
       <h2>來客數</h2>
       <div class="row2">
         <label class="f"><b>新客</b><input id="rNew" class="num" inputmode="numeric" placeholder="0"></label>
@@ -223,13 +239,13 @@
     <div class="card">
       <h2>現金安排</h2>
       <div class="sum"><span id="rPrevLabel">前次實點現場零用金</span><b id="rPrev">–</b></div>
-      <div class="sum"><span>＋ 今日現金收入</span><b id="rCashEcho">–</b></div>
+      <div class="sum"><span>＋ 今日現金收入<small id="rCashNote" style="display:block;font-size:13px"></small></span><b id="rCashEcho">–</b></div>
       <div class="sum"><span>－ 今日支出合計</span><b id="rExp">–</b></div>
       <div class="sum big"><span>存入前抽屜應有現金</span><b id="rBefore">–</b></div>
 
       <div class="note yellow" id="rSuggest" style="margin:12px 0"></div>
       <div class="row2">
-        <label class="f"><b>現金營收存入</b><input id="rDepRev" class="num" inputmode="numeric" placeholder="沒存填 0"></label>
+        <label class="f"><b>今日現金存入</b><input id="rDepRev" class="num" inputmode="numeric" placeholder="沒存填 0"></label>
         <label class="f"><b>現場零用金超額存入</b><input id="rDepPetty" class="num" inputmode="numeric" placeholder="沒存填 0"></label>
       </div>
       <div class="sum big" style="margin-bottom:12px"><span>存入合計（合併匯一筆）</span><b id="rDepTotal">0</b></div>
@@ -546,6 +562,9 @@ function fillReport() {
   $('rExisting').hidden = !r;
   const set = (id, v) => $(id).value = r ? v : '';
   set('rCash', r && r.cash); set('rCard', r && r.card); set('rTransfer', r && r.transfer); set('rNew', r && r.newCustomers); set('rOld', r && r.oldCustomers);
+  const hasStored = !!r && (r.storedCash || 0) + (r.storedCard || 0) > 0;
+  $('rStoredCash').value = hasStored ? r.storedCash : ''; $('rStoredCard').value = hasStored ? r.storedCard : '';
+  setStored(hasStored, true);
   set('rDepRev', r && r.depositRevenue); set('rDepPetty', r && r.depositPetty);
   $('rMatchY').checked = !!r && r.countMatch; $('rMatchN').checked = !!r && !r.countMatch;
   $('rCounted').value = r && !r.countMatch ? r.counted : '';
@@ -565,15 +584,18 @@ function calc() {
   const depositRevenue = val('rDepRev') || 0, depositPetty = val('rDepPetty') || 0;
   const countMatch = $('rMatchY').checked, mismatch = $('rMatchN').checked;
   const deposit = depositRevenue + depositPetty;
-  const before = d.prevCounted + cash - d.expenseTotal;   // 存入前抽屜應有現金
+  const hasStored = $('rStoredY').classList.contains('on');
+  const storedCash = hasStored ? val('rStoredCash') || 0 : 0, storedCard = hasStored ? val('rStoredCard') || 0 : 0;
+  const cashIn = cash + storedCash;                         // 今日現金收入 = 現金營收 + 儲值金現金
+  const before = d.prevCounted + cashIn - d.expenseTotal;   // 存入前抽屜應有現金
   const expected = before - deposit;
   // 金額相符：實點＝應有；金額不符：店長填實際金額
   const counted = countMatch ? expected : mismatch ? val('rCounted') : null;
-  // 今天可存入：超過基本額的部分以千元往下取整；先算今日現金營收，其餘算現場零用金超額
+  // 今天可存入：超過基本額的部分以千元往下取整；先算今日現金收入（含儲值金現金），其餘算現場零用金超額
   const sugTotal = before > s.base ? Math.floor((before - s.base) / 1000) * 1000 : 0;
-  const sugRevenue = Math.min(cash, sugTotal), sugPetty = sugTotal - sugRevenue;
+  const sugRevenue = Math.min(cashIn, sugTotal), sugPetty = sugTotal - sugRevenue;
   const over = (counted || 0) - s.base;
-  return { cash, card, transfer, depositRevenue, depositPetty, deposit, counted, countMatch, mismatch, total: cash + card + transfer, expected,
+  return { cash, card, transfer, hasStored, storedCash, storedCard, cashIn, depositRevenue, depositPetty, deposit, counted, countMatch, mismatch, total: cash + card + transfer, expected,
     before, sugTotal, sugRevenue, sugPetty,
     diff: counted == null ? null : counted - expected,
     shouldDeposit: over > 0 ? Math.floor(over / 1000) * 1000 : 0,
@@ -587,11 +609,12 @@ function recalc() {
   $('rTotal').textContent = fmt(c.total);
   $('rCustomers').textContent = fmt((val('rNew') || 0) + (val('rOld') || 0));
   $('rPrev').textContent = fmt(ctx.r.prevCounted);
-  $('rCashEcho').textContent = fmt(c.cash);
+  $('rCashEcho').textContent = fmt(c.cashIn);
+  $('rCashNote').textContent = c.storedCash ? `現金營收 ${fmt(c.cash)}＋儲值金現金 ${fmt(c.storedCash)}` : '';
   $('rExp').textContent = fmt(ctx.r.expenseTotal);
   $('rBefore').textContent = fmt(c.before);
   $('rSuggest').innerHTML = c.sugTotal > 0
-    ? `今天可存入 <b>${fmt(c.sugTotal)}</b> 元（現金營收 ${fmt(c.sugRevenue)}＋現場零用金超額 ${fmt(c.sugPetty)}），店內留 ${fmt(c.before - c.sugTotal)} 元。
+    ? `今天可存入 <b>${fmt(c.sugTotal)}</b> 元（今日現金 ${fmt(c.sugRevenue)}＋現場零用金超額 ${fmt(c.sugPetty)}），店內留 ${fmt(c.before - c.sugTotal)} 元。
        <button class="btn ghost" style="margin-top:10px;min-height:48px;font-size:16px" onclick="useSuggest()">帶入這個金額</button>`
     : `今天不能存入（現場零用金要留 ${fmt(ctx.r.settings.base)} 元，多出來的不到一千元）。兩格請填 0。`;
   $('rDepTotal').textContent = fmt(c.deposit);
@@ -608,6 +631,11 @@ function recalc() {
   }
 }
 
+function setStored(on, silent) {
+  $('rStoredY').className = on ? 'on' : ''; $('rStoredN').className = on ? '' : 'on';
+  $('rStoredBox').hidden = !on;
+  if (!silent) recalc();
+}
 function depositError(c) {
   if (c.deposit > c.maxDeposit) return `存入太多：現場零用金不能低於 ${fmt(ctx.r.settings.base)} 元，今天最多只能存入 ${fmt(c.maxDeposit)} 元。若已匯出請聯絡總部。`;
   if (c.deposit % 1000 !== 0) return `存入合計必須是千元整數（目前合計 ${fmt(c.deposit)} 元）。`;
@@ -626,10 +654,12 @@ function moneyRows(c, s) {
     <div class="sum"><span>刷卡</span><b>${fmt(c.card)}</b></div>
     <div class="sum"><span>轉帳／電子支付</span><b>${fmt(c.transfer)}</b></div>
     <div class="sum big"><span>總營收</span><b>${fmt(c.total)}</b></div>
+    ${c.storedCash ? `<div class="sum"><span>儲值金－現金</span><b>${fmt(c.storedCash)}</b></div>` : ''}
+    ${c.storedCard ? `<div class="sum"><span>儲值金－刷卡</span><b>${fmt(c.storedCard)}</b></div>` : ''}
     <div class="sum"><span>前次實點現場零用金</span><b>${fmt(c.prevCounted)}</b></div>
-    <div class="sum"><span>＋ 今日現金收入</span><b>${fmt(c.cash)}</b></div>
+    <div class="sum"><span>＋ 今日現金收入${c.storedCash ? `<small style="display:block;font-size:13px">現金營收 ${fmt(c.cash)}＋儲值金現金 ${fmt(c.storedCash)}</small>` : ''}</span><b>${fmt(c.cashIn == null ? c.cash : c.cashIn)}</b></div>
     <div class="sum"><span>－ 今日支出合計</span><b>${fmt(c.expenseTotal)}</b></div>
-    <div class="sum"><span>－ 現金營收存入</span><b>${fmt(c.depositRevenue)}</b></div>
+    <div class="sum"><span>－ 今日現金存入</span><b>${fmt(c.depositRevenue)}</b></div>
     <div class="sum"><span>－ 現場零用金超額存入</span><b>${fmt(c.depositPetty)}</b></div>
     <div class="sum"><span>存入合計（匯一筆）</span><b>${fmt(c.deposit)}</b></div>
     <div class="sum big"><span>應有現場零用金</span><b>${fmt(c.expected)}</b></div>
@@ -648,11 +678,13 @@ function noteHtml(c, s) {
 }
 function toConfirm() {
   const need = [['rReporter', '填報人'], ['rCash', '現金'], ['rCard', '刷卡'], ['rTransfer', '轉帳／電子支付'], ['rNew', '新客數（沒有請填 0）'], ['rOld', '舊客數（沒有請填 0）'],
-    ['rDepRev', '現金營收存入（沒存請填 0）'], ['rDepPetty', '現場零用金超額存入（沒存請填 0）']];
+    ['rDepRev', '今日現金存入（沒存請填 0）'], ['rDepPetty', '現場零用金超額存入（沒存請填 0）']];
   for (const [id, label] of need) {
     if ($(id).value.trim() === '') { toast('請填寫「' + label + '」'); $(id).focus(); return; }
   }
   const c = calc();
+  if (c.hasStored && c.storedCash + c.storedCard === 0) { toast('已選擇今天有客人買儲值，請填寫儲值金金額；沒有的話請改選「沒有」'); $('rStoredCash').focus(); return; }
+  if (c.hasStored && !(ctx.r.features && ctx.r.features.stored)) return toast('後端還是舊版，還不能填儲值金。請先更新 Apps Script 並重新部署');
   if (depositError(c)) return toast(depositError(c));
   if (c.deposit > 0 && !photos.deposit && !existingPhoto('deposit')) return toast('今日有存入，請上傳「匯款證明」');
   if (!c.countMatch && !c.mismatch) return toast('請點鈔後選擇「金額相符」或「金額不符」');
@@ -666,7 +698,7 @@ function toConfirm() {
   }
   const s = ctx.r.settings;
   Object.assign(c, { prevCounted: ctx.r.prevCounted, expenseTotal: ctx.r.expenseTotal });
-  draft = { date: $('rDate').value, reporter: $('rReporter').value.trim(), cash: c.cash, card: c.card, transfer: c.transfer,
+  draft = { date: $('rDate').value, reporter: $('rReporter').value.trim(), cash: c.cash, card: c.card, transfer: c.transfer, hasStored: c.hasStored, storedCash: c.storedCash, storedCard: c.storedCard,
     newCustomers: val('rNew'), oldCustomers: val('rOld'), depositRevenue: c.depositRevenue, depositPetty: c.depositPetty, deposit: c.deposit, countMatch: c.countMatch, counted: c.counted, note: $('rNote').value.trim() };
   Object.assign(draft, checks);
   $('cNotes').innerHTML = noteHtml(c, s);
@@ -746,6 +778,7 @@ function metricsHtml(r) {
     <div><span>差額</span><b class="${r.diff ? 'neg' : ''}">${signed(r.diff)}</b></div>
     <div><span>今日存入</span><b>${fmt(r.deposit)}</b></div>
     <div><span>收班檢查</span><b class="${n ? 'neg' : ''}">${total - n}／${total}</b> <small>完成</small></div>
+    <div style="grid-column:1 / -1"><span>儲值金購買</span><b>${fmt((r.storedCash || 0) + (r.storedCard || 0))}</b> <small>現金 ${fmt(r.storedCash || 0)}・刷卡 ${fmt(r.storedCard || 0)}</small></div>
   </div>`;
 }
 function reportDetailHtml(r) {
@@ -880,10 +913,12 @@ function monthCardHtml(o, title, sub, checks, cats) {
   return `<div class="card"><div class="shead"><b>${esc(title)}</b><span class="badge wait">${sub}</span></div>
     ${row('營收合計', fmt(o.revenue))}
     ${sub2('現金', fmt(o.cash))}${sub2('刷卡', fmt(o.card))}${sub2('轉帳／電子支付', fmt(o.transfer))}
+    ${row('儲值金購買', fmt((o.storedCash || 0) + (o.storedCard || 0)))}
+    ${sub2('現金', fmt(o.storedCash || 0))}${sub2('刷卡', fmt(o.storedCard || 0))}${sub2('（不計入營收與客單價）', '')}
     ${row('來客數', fmt(o.customers))}
     ${sub2('新客', fmt(o.newCustomers))}${sub2('舊客', fmt(o.oldCustomers))}${sub2('平均客單價', avg)}
     ${row('存入合計', fmt(o.deposit))}
-    ${sub2('現金營收存入', fmt(o.depositRevenue))}${sub2('現場零用金超額存入', fmt(o.depositPetty))}
+    ${sub2('今日現金存入', fmt(o.depositRevenue))}${sub2('現場零用金超額存入', fmt(o.depositPetty))}
     ${row('現場零用金支出合計', fmt(o.expenseTotal))}
     ${cats.map(c => sub2(esc(c), fmt(o.expenseByCategory[c] || 0))).join('')}
     ${row('累計差額', signed(o.diff), o.diff ? 'neg' : '')}
@@ -895,9 +930,9 @@ async function loadMonthly() {
   try { d = await api('monthly', { month }, '載入中…'); } catch (e) { toast(e.message); return; }
   $('mLabel').textContent = `${+d.month.slice(0, 4)} 年 ${+d.month.slice(5)} 月`;
   // 全店合計
-  const keys = ['days', 'revenue', 'cash', 'card', 'transfer', 'newCustomers', 'oldCustomers', 'customers', 'depositRevenue', 'depositPetty', 'deposit', 'expenseTotal', 'diff'];
+  const keys = ['days', 'revenue', 'cash', 'card', 'transfer', 'storedCash', 'storedCard', 'newCustomers', 'oldCustomers', 'customers', 'depositRevenue', 'depositPetty', 'deposit', 'expenseTotal', 'diff'];
   const all = { expenseByCategory: {}, incompleteDays: {} };
-  keys.forEach(k => all[k] = d.rows.reduce((a, o) => a + o[k], 0));
+  keys.forEach(k => all[k] = d.rows.reduce((a, o) => a + (o[k] || 0), 0));
   d.categories.forEach(c => all.expenseByCategory[c] = d.rows.reduce((a, o) => a + (o.expenseByCategory[c] || 0), 0));
   d.checks.forEach(c => all.incompleteDays[c.key] = d.rows.reduce((a, o) => a + o.incompleteDays[c.key], 0));
   $('mList').innerHTML = all.days || all.expenseTotal
