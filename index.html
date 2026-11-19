@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#f6efe6">
 <title>頭沐 | CHIEFROM 門店每日回報</title>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
   :root {
     --bg:#f6efe6; --card:#fffaf3; --ink:#4a3b2f; --sub:#8a7663; --line:#e2d3bf;
@@ -111,6 +112,32 @@
   #toast { position:fixed; left:16px; right:16px; bottom:calc(84px + env(safe-area-inset-bottom)); z-index:30; max-width:528px; margin:0 auto; background:var(--red); color:#fff; padding:14px 16px; border-radius:12px; font-size:16px; box-shadow:0 6px 20px rgba(0,0,0,.2); }
   #viewer { position:fixed; inset:0; background:rgba(40,30,22,.9); z-index:25; display:flex; align-items:center; justify-content:center; padding:16px; }
   #viewer img { max-width:100%; max-height:100%; border-radius:8px; }
+  /* 登入、關懷 */
+  .gbtn { display:flex; justify-content:center; min-height:52px; margin:8px 0; }
+  .cname { font-size:26px; font-weight:700; margin:4px 0 2px; }
+  .tel { display:flex; align-items:center; justify-content:center; gap:8px; min-height:58px; border-radius:14px; background:var(--green); color:#fff; font-size:22px; font-weight:700; text-decoration:none; margin:10px 0 12px; font-variant-numeric:tabular-nums; letter-spacing:.03em; }
+  .hist { font-size:15px; padding:8px 0; border-bottom:1px dashed var(--line); }
+  .hist:last-child { border-bottom:0; }
+  .hist small { color:var(--sub); display:block; }
+  details.script { margin-top:12px; border:1px solid var(--line); border-radius:12px; background:#fff; }
+  details.script summary { padding:12px 14px; font-weight:600; color:var(--brand); min-height:48px; cursor:pointer; }
+  details.script p { margin:0; padding:0 14px 14px; font-size:16px; white-space:pre-wrap; }
+  .chips { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
+  .chips label { display:flex; align-items:center; gap:6px; min-height:44px; padding:6px 14px; border:1px solid var(--line); border-radius:22px; background:#fff; font-size:15px; }
+  .chips input { width:20px; height:20px; min-height:0; margin:0; accent-color:var(--brand); }
+  .chips label:has(input:checked) { background:var(--brand-soft); border-color:var(--brand); font-weight:600; }
+  .bigdone { text-align:center; font-size:22px; padding:36px 16px; }
+  .bar { display:grid; grid-template-columns:minmax(0,9em) minmax(0,1fr) 2.5em; gap:8px; align-items:center; font-size:14px; margin:6px 0; }
+  .bar span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .bar i { display:block; height:14px; min-width:2px; background:var(--brand); border-radius:7px; }
+  .bar b { text-align:right; font-variant-numeric:tabular-nums; }
+  .seg.four { grid-template-columns:repeat(4,minmax(0,1fr)); }
+  .seg.four button { font-size:15px; }
+  .inline { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; align-items:end; }
+  .inline .btn { width:auto; min-height:52px; padding:0 16px; font-size:16px; }
+  .person { display:flex; justify-content:space-between; gap:10px; padding:10px 0; border-bottom:1px dashed var(--line); align-items:center; }
+  .person:last-child { border-bottom:0; }
+  .person small { display:block; color:var(--sub); font-size:13px; word-break:break-all; }
 </style>
 </head>
 <body>
@@ -137,9 +164,9 @@
   <section id="v-login" hidden>
     <h1>門店每日回報</h1>
     <div class="card">
-      <label class="f"><b>門店</b><select id="loginStore"></select></label>
-      <label class="f"><b>PIN</b><input id="loginPin" type="password" inputmode="numeric" autocomplete="off" placeholder="請輸入 PIN"></label>
-      <button class="btn" onclick="login()">登入</button>
+      <p style="margin:0 0 8px">請用公司登記的 Google 帳號登入。</p>
+      <div class="gbtn" id="gBtn"></div>
+      <p class="hint" id="gMsg"></p>
     </div>
     <p class="hint" id="apiReset" hidden style="text-align:center"><button class="link" onclick="resetApi()">重新設定 Apps Script 網址</button></p>
   </section>
@@ -318,6 +345,102 @@
       <div class="sum big" style="margin-top:6px"><span>支出合計</span><b id="eTotal">0</b></div>
     </div>
   </section>
+
+  <!-- 關懷（客服、養護師）：一次只顯示一位 -->
+  <section id="v-care" hidden>
+    <h1>沉睡顧客關懷</h1>
+    <div class="note green" id="cvProgress"></div>
+    <div id="cvBody"></div>
+  </section>
+
+  <!-- 總部：關懷總覽／匯入／人員／設定 -->
+  <section id="v-careAdmin" hidden>
+    <h1>關懷管理</h1>
+    <div class="seg four">
+      <button id="caSegO" onclick="caSeg('o')">總覽</button>
+      <button id="caSegI" onclick="caSeg('i')">匯入神美</button>
+      <button id="caSegP" onclick="caSeg('p')">人員</button>
+      <button id="caSegS" onclick="caSeg('s')">設定</button>
+    </div>
+
+    <div id="caO" hidden>
+      <div class="card">
+        <label class="f"><b>期間</b><select id="caPeriod" onchange="caPeriodChange()"><option value="week">本週</option><option value="month">本月</option><option value="custom">自訂</option></select></label>
+        <div class="row2" id="caCustom" hidden>
+          <label class="f"><b>開始日期</b><input id="caFrom" type="date"></label>
+          <label class="f"><b>結束日期</b><input id="caTo" type="date"></label>
+        </div>
+        <div class="row2">
+          <label class="f"><b>店家</b><select id="caStore"></select></label>
+          <label class="f"><b>類型</b><select id="caType"><option value="">全部</option><option>非儲值</option><option>儲值</option></select></label>
+        </div>
+        <label class="f"><b>聯絡人</b><select id="caContact"></select></label>
+        <button class="btn" onclick="caOverview()">查詢</button>
+      </div>
+      <div id="caOResult"></div>
+      <div class="card">
+        <h2>手動重新分配</h2>
+        <div class="row2">
+          <label class="f"><b>客人ID</b><input id="caRaId" maxlength="20" placeholder="例如 C00012" autocomplete="off"></label>
+          <label class="f"><b>分給</b><select id="caRaTo"></select></label>
+        </div>
+        <button class="btn ghost" onclick="caReassign($('caRaId').value.trim(), $('caRaTo').value)">重新分配</button>
+      </div>
+      <div class="card">
+        <h2>匯出與勿擾名單</h2>
+        <button class="btn ghost" onclick="caExport()">匯出目前篩選的關懷紀錄（.csv）</button>
+        <p class="hint">匯出會記錄在「操作紀錄」。</p>
+        <div class="inline" style="margin-top:14px">
+          <label class="f"><b>從勿擾名單移除</b><input id="caDnd" inputmode="numeric" maxlength="12" placeholder="手機 10 碼" autocomplete="off"></label>
+          <button class="btn danger" onclick="caRemoveDnd()">移除</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="caI" hidden>
+      <div class="card">
+        <h2>匯入神美訂單列表</h2>
+        <p class="hint" style="margin:-4px 0 12px">檔案只在這台裝置上讀取，只把關懷需要的「每位客人摘要」送到後端，檔案本身不會上傳，也不會存在這台裝置。</p>
+        <label class="photo" id="caIPick"><input type="file" id="caFile" accept=".xlsx,.xls" onchange="caPick(this)"><span class="pick">選擇神美「訂單列表」.xlsx</span></label>
+        <div id="caIPreview"></div>
+      </div>
+      <div id="caIResult"></div>
+    </div>
+
+    <div id="caP" hidden>
+      <div class="card">
+        <h2>新增／修改人員</h2>
+        <label class="f"><b>Google 帳號 Email</b><input id="psEmail" type="email" autocomplete="off" maxlength="100"></label>
+        <label class="f"><b>姓名</b><input id="psName" maxlength="50"></label>
+        <div class="row2">
+          <label class="f"><b>角色</b><select id="psRole"><option>總部</option><option>店長</option><option>客服</option><option>養護師</option></select></label>
+          <label class="f"><b>店家</b><select id="psStore"></select></label>
+        </div>
+        <label class="f"><b>神美名稱</b>（養護師必填）<input id="psShenmei" maxlength="50" placeholder="神美「工作人員」上的名字"></label>
+        <label class="check"><input type="checkbox" id="psActive" checked>在職</label>
+        <button class="btn" onclick="caStaffSave()">儲存</button>
+        <p class="hint">改成「離職」時，她名下未結案的客人會自動重新分配。</p>
+      </div>
+      <div class="card"><h2>人員名單</h2><div id="psList"></div></div>
+    </div>
+
+    <div id="caS" hidden>
+      <div class="card">
+        <div class="row2">
+          <label class="f"><b>關懷每日上限</b><input id="stLimit" class="num" inputmode="numeric"></label>
+          <label class="f"><b>沉睡天數</b><input id="stDormant" class="num" inputmode="numeric"></label>
+          <label class="f"><b>未接重撥間隔天數</b><input id="stRetry" class="num" inputmode="numeric"></label>
+          <label class="f"><b>觀察天數</b><input id="stWatch" class="num" inputmode="numeric"></label>
+          <label class="f"><b>預約觀察天數</b><input id="stAppt" class="num" inputmode="numeric"></label>
+          <label class="f"><b>個資保留月數</b><input id="stRetain" class="num" inputmode="numeric"></label>
+        </div>
+        <label class="f"><b>客戶回饋選項</b>（以「、」分隔）<textarea id="stFeedback"></textarea></label>
+        <label class="f"><b>神美店家對應</b>（神美名稱=系統店家，以「、」分隔）<textarea id="stStoreMap"></textarea></label>
+        <label class="f"><b>建議說法</b><textarea id="stScript" style="min-height:180px"></textarea></label>
+        <button class="btn" onclick="caSaveSettings()">儲存設定</button>
+      </div>
+    </div>
+  </section>
 </div>
 
 <nav class="tabs" id="tabs" hidden><div class="in" id="tabsIn"></div></nav>
@@ -327,7 +450,6 @@
   <h2>刪除紀錄</h2>
   <p id="dlgText" style="margin:0 0 6px"></p>
   <p class="hint" style="margin:0 0 12px">刪除後畫面上不會再顯示，相關金額會重新計算。原始資料會保留在試算表的「已刪除紀錄」分頁。</p>
-  <label class="f"><b>請輸入總部 PIN</b><input id="dlgPin" type="password" inputmode="numeric" autocomplete="off"></label>
   <button class="btn danger" onclick="doDelete()">確定刪除</button>
   <button class="btn ghost" onclick="closeDelete()">取消</button>
 </div></div>
@@ -337,20 +459,23 @@
 <script>
 // ===== 設定：正式上線時把 Apps Script 的 /exec 網址填在這裡 =====
 const API_URL = 'https://script.google.com/macros/s/AKfycbzZXDHPCshCDxJc0052l1xEI0IsS9lDTp-rV6-Az51u9dquCRx5BsTuBIb8chrNmrO5/exec';
+// ===== Google 登入：在 Google Cloud Console 建立的 OAuth Client ID（不是秘密，可以公開；建立步驟見 README）=====
+const GOOGLE_CLIENT_ID = '';
 
 const $ = id => document.getElementById(id);
 const LS = { api: 'chiefrom_api', session: 'chiefrom_session', name: 'chiefrom_name', names: 'chiefrom_names' };
-const VIEWS = ['v-setup', 'v-login', 'v-overview', 'v-monthly', 'v-records', 'v-report', 'v-confirm', 'v-done', 'v-expense'];
+const VIEWS = ['v-setup', 'v-login', 'v-overview', 'v-monthly', 'v-records', 'v-report', 'v-confirm', 'v-done', 'v-expense', 'v-care', 'v-careAdmin'];
+const ROLES = ['總部', '店長', '客服', '養護師'];
 const TABS = {
   store: [['r', '每日回報'], ['e', '現場零用金<wbr>支出'], ['q', '紀錄']],
-  admin: [['o', '每日總覽'], ['q', '紀錄查詢'], ['m', '月報']],
+  admin: [['o', '每日總覽'], ['q', '紀錄'], ['m', '月報'], ['c', '關懷']],
 };
-const VIEW_TAB = { 'v-report': 'r', 'v-confirm': 'r', 'v-done': 'r', 'v-expense': 'e', 'v-records': 'q', 'v-overview': 'o', 'v-monthly': 'm' };
+const VIEW_TAB = { 'v-report': 'r', 'v-confirm': 'r', 'v-done': 'r', 'v-expense': 'e', 'v-records': 'q', 'v-overview': 'o', 'v-monthly': 'm', 'v-careAdmin': 'c' };
 const PHOTOS = {
   deposit: { box: 'depositPhotoBox', label: '匯款證明' },
   receipt: { box: 'receiptPhotoBox', label: '收據照片' },
 };
-let session = null;          // {token, role, store, settings, categories, expires}
+let session = null;          // {token, email, name, role(總部/店長/客服/養護師), store, expires, checks, categories, settings}
 let ctx = { r: null, e: null }; // 每日回報／支出各自的當日資訊
 let photos = {};             // key -> dataURL（新選的照片）
 let draft = null;            // 確認畫面的內容
@@ -376,12 +501,12 @@ function localToday() {
 
 function show(id) {
   VIEWS.forEach(v => $(v).hidden = v !== id);
-  const cur = VIEW_TAB[id];
-  $('tabs').hidden = !(session && cur);
-  if (session && cur) $('tabsIn').innerHTML = TABS[session.role].map(([k, label]) =>
+  const cur = VIEW_TAB[id], tabs = !session ? null : isAdmin() ? TABS.admin : session.role === '店長' ? TABS.store : null;
+  $('tabs').hidden = !(tabs && cur);
+  if (tabs && cur) $('tabsIn').innerHTML = tabs.map(([k, label]) =>
     `<button class="${k === cur ? 'on' : ''}" onclick="tab('${k}')">${label}</button>`).join('');
   $('who').hidden = !session;
-  if (session) $('whoName').textContent = session.store;
+  if (session) $('whoName').textContent = session.role === '店長' ? session.store : (session.name || session.role);
   window.scrollTo(0, 0);
 }
 let toastTimer;
@@ -415,13 +540,10 @@ async function start() {
   if (!apiUrl()) return show('v-setup');
   $('apiReset').hidden = !!API_URL;
   try { session = JSON.parse(localStorage.getItem(LS.session)); } catch (e) { session = null; }
-  if (session && session.expires > Date.now() && session.checks) return enter();
-  session = null;
+  if (session && session.expires > Date.now() && ROLES.includes(session.role) && session.token) return enter();
+  session = null; localStorage.removeItem(LS.session); // 舊版 PIN 登入的資料一併清除
   show('v-login');
-  try {
-    const d = await api('stores', {}, '載入中…');
-    $('loginStore').innerHTML = d.stores.concat(d.admins).map(s => `<option>${esc(s)}</option>`).join('');
-  } catch (e) { toast(e.message); }
+  initGoogle();
 }
 function saveApi() {
   const u = $('apiUrl').value.trim();
@@ -429,30 +551,44 @@ function saveApi() {
   localStorage.setItem(LS.api, u); start();
 }
 function resetApi() { localStorage.removeItem(LS.api); $('apiUrl').value = ''; show('v-setup'); }
-async function login() {
-  const pin = $('loginPin').value.trim();
-  if (!$('loginStore').value) return toast('請選擇門店');
-  if (!pin) return toast('請輸入 PIN');
+let gTries = 0, gReady = false;
+function initGoogle() {
+  if (!GOOGLE_CLIENT_ID) { $('gMsg').textContent = '尚未設定 Google 登入（index.html 的 GOOGLE_CLIENT_ID），請依 README 步驟設定。'; return; }
+  if (!(window.google && google.accounts && google.accounts.id)) {
+    if (++gTries > 50) { $('gMsg').textContent = '無法載入 Google 登入，請檢查網路後重新整理。'; return; }
+    return setTimeout(initGoogle, 200);
+  }
+  if (!gReady) { google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: onGoogleLogin, auto_select: false, cancel_on_tap_outside: true }); gReady = true; }
+  $('gMsg').textContent = '';
+  google.accounts.id.renderButton($('gBtn'), { theme: 'outline', size: 'large', text: 'signin_with', shape: 'pill', locale: 'zh-TW', width: 280 });
+}
+async function onGoogleLogin(resp) {
   try {
     session = null;
-    session = await api('login', { store: $('loginStore').value, pin }, '登入中…');
-    localStorage.setItem(LS.session, JSON.stringify(session));
-    $('loginPin').value = '';
+    session = await api('login', { idToken: resp.credential }, '登入中…');
+    localStorage.setItem(LS.session, JSON.stringify(session)); // 只存登入資訊，不存任何客人資料
     enter();
-  } catch (e) { toast(e.message); }
+  } catch (e) { session = null; toast(e.message); }
 }
 function logout() {
+  const token = session && session.token;
+  if (token && apiUrl()) fetch(apiUrl(), { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'logout', token }) }).catch(() => {});
+  if (window.google && google.accounts && google.accounts.id) google.accounts.id.disableAutoSelect();
   session = null; localStorage.removeItem(LS.session);
   ctx = { r: null, e: null }; photos = {};
+  careClear();
   start();
 }
 function enter() {
+  if (session.role === '客服' || session.role === '養護師') return careStart();
+  session.checks = session.checks || []; session.categories = session.categories || [];
   const today = localToday();
   queried = false; details = {};
   $('qFrom').value = addDays(today, -6); $('qTo').value = today; $('qFrom').max = today; $('qTo').max = today;
   $('qList').innerHTML = ''; $('qSeg').hidden = true;
-  $('qStoreBox').hidden = session.role !== 'admin';
-  if (session.role === 'admin') {
+  $('qStoreBox').hidden = !isAdmin();
+  ca.init = null;
+  if (isAdmin()) {
     $('oDate').value = today; $('oDate').max = today; month = today.slice(0, 7);
     $('qStore').innerHTML = '<option value="">全部門店</option>';
     loadOverview();
@@ -494,7 +630,8 @@ function renderNames() {
 function pickName(input, i) { $(input).value = savedNames()[i] || ''; renderNames(); }
 function toggleReason(key) { $('why-' + key).hidden = $('chk-' + key).checked; }
 function tab(k) {
-  if (k === 'o') loadOverview();
+  if (k === 'c') careAdminOpen();
+  else if (k === 'o') loadOverview();
   else if (k === 'm') loadMonthly();
   else if (k === 'q') { show('v-records'); if (!queried) runQuery(); }
   else if (k === 'e') { show('v-expense'); if (!ctx.e) loadDay('e'); }
@@ -799,21 +936,19 @@ function expenseRowsHtml(list, withMeta) {
 }
 
 // ===== 總部：刪除紀錄 =====
-const isAdmin = () => !!session && session.role === 'admin';
+const isAdmin = () => !!session && session.role === '總部';
 let delTargets = [], delCurrent = null;
 function delTarget(t) { delTargets.push(t); return delTargets.length - 1; }
 function askDelete(i) {
   delCurrent = delTargets[i];
   $('dlgText').textContent = '確定要刪除 ' + delCurrent.label + ' 嗎？';
-  $('dlgPin').value = ''; $('dlg').hidden = false; $('dlgPin').focus();
+  $('dlg').hidden = false;
 }
 function closeDelete() { $('dlg').hidden = true; delCurrent = null; }
 async function doDelete() {
-  const pin = $('dlgPin').value.trim();
-  if (!pin) return toast('請輸入總部 PIN');
-  const t = delCurrent;
+  const t = delCurrent; // 權限由後端檢查：角色必須是總部
   try {
-    await api('deleteRecord', { type: t.type, store: t.store, date: t.date, id: t.id, pin }, '刪除中…');
+    await api('deleteRecord', { type: t.type, store: t.store, date: t.date, id: t.id }, '刪除中…');
   } catch (e) { toast(/未知的動作/.test(e.message) ? '後端還是舊版，請先更新 Apps Script 並重新部署' : e.message); return; }
   closeDelete();
   // 重新載入目前的畫面
@@ -941,6 +1076,326 @@ async function loadMonthly() {
     : '<div class="card">這個月還沒有任何回報或支出紀錄。</div>';
   show('v-monthly');
 }
+
+// ===== 沉睡顧客關懷：客服、養護師（一次只有一位，客人資料只放在記憶體，不寫入 localStorage／console／網址） =====
+let care = { cur: null };
+function careClear() { care = { cur: null }; $('cvBody').innerHTML = ''; $('cvProgress').textContent = ''; ca.import = null; $('caIPreview').innerHTML = ''; $('caIResult').innerHTML = ''; }
+const okToast = msg => { toast(msg); $('toast').style.background = 'var(--green)'; setTimeout(() => $('toast').style.background = '', 6100); };
+async function careStart() { show('v-care'); await careLoad(); }
+async function careLoad() {
+  care.cur = null; $('cvBody').innerHTML = '';
+  let d;
+  try { d = await api('careNext', {}, '載入中…'); }
+  catch (e) { $('cvBody').innerHTML = `<div class="card"><p>${esc(e.message)}</p><button class="btn ghost" onclick="careLoad()">重新載入</button></div>`; return; }
+  $('cvProgress').textContent = `今天已完成 ${d.done} / ${d.limit}`;
+  if (d.finished) { $('cvBody').innerHTML = '<div class="card bigdone">今天的關懷已完成 🌿，明天見</div>'; return; }
+  if (d.empty) { $('cvBody').innerHTML = '<div class="card bigdone">目前沒有需要聯絡的客人 🌿</div><button class="btn ghost" onclick="careLoad()">重新整理</button>'; return; }
+  const c = care.cur = d.customer;
+  const tel = String(c.phone).replace(/\D/g, '');
+  const telShow = tel.length === 10 ? tel.slice(0, 4) + '-' + tel.slice(4, 7) + '-' + tel.slice(7) : tel;
+  const hist = c.history.length ? c.history.map(h => `<div class="hist"><b>${esc(h.date)}　${esc(h.result)}</b>${h.appointment ? `（預約 ${esc(h.appointment)}）` : ''}
+      <small>${h.by ? esc(h.by) + '・' : ''}${esc(h.feedback) || '無回饋'}${h.note ? '・' + esc(h.note) : ''}</small></div>`).join('') : '<p class="hint">還沒有聯絡紀錄。</p>';
+  $('cvBody').innerHTML = `
+    <div class="card">
+      <div class="shead"><b>${esc(c.store)}<small>${esc(c.type)}客・${esc(c.id)}</small></b><span class="badge wait">${esc(c.status)}</span></div>
+      <div class="cname">${esc(c.name) || '（未留姓名）'}</div>
+      <a class="tel" href="tel:${tel}">📞 ${esc(telShow)}</a>
+      <div class="sum"><span>最後來店日</span><b>${esc(c.lastVisit)}${c.daysSince != null ? `（${c.daysSince} 天前）` : ''}</b></div>
+      <div class="sum"><span>今年染髮次數</span><b>${fmt(c.dyeCount)} 次</b></div>
+      <div class="sum"><span>最後服務品項</span><b>${esc(c.lastItem) || '–'}</b></div>
+      <div class="sum"><span>最後服務養護師</span><b>${esc(c.lastStylist) || '–'}</b></div>
+      <details class="script"><summary>建議說法</summary><p>${esc(d.script)}</p></details>
+    </div>
+    <div class="card"><h2>之前的聯絡紀錄</h2>${hist}</div>
+    <div class="card">
+      <h2>聯絡結果（必填）</h2>
+      ${d.results.map((r, i) => `<label class="check ${r === '請勿再聯絡' || r === '號碼錯誤' ? 'bad' : ''}"><input type="radio" name="cvRes" value="${esc(r)}" onchange="careRes()">${esc(r)}</label>`).join('')}
+      <div id="cvApptBox" hidden><label class="f"><b>預約日期（必填）</b><input type="date" id="cvAppt" min="${localToday()}"></label></div>
+      <h2 style="margin-top:16px">客戶回饋（可複選）</h2>
+      <div class="chips">${d.feedbackOptions.map(f => `<label><input type="checkbox" name="cvFb" value="${esc(f)}">${esc(f)}</label>`).join('')}</div>
+      <label class="f"><b>備註</b>（選填）<textarea id="cvNote" maxlength="500" placeholder="客人說了什麼？"></textarea></label>
+    </div>
+    <button class="btn" onclick="careSubmit()">送出，下一位</button>`;
+}
+function careRes() {
+  const r = document.querySelector('input[name=cvRes]:checked');
+  $('cvApptBox').hidden = !(r && r.value === '已預約');
+}
+async function careSubmit() {
+  if (!care.cur) return;
+  const r = document.querySelector('input[name=cvRes]:checked');
+  if (!r) return toast('請選擇聯絡結果');
+  const appointmentDate = r.value === '已預約' ? $('cvAppt').value : '';
+  if (r.value === '已預約' && !appointmentDate) { toast('請填寫預約日期'); $('cvAppt').focus(); return; }
+  if (r.value === '請勿再聯絡' && !confirm('確定這位客人之後都不再聯絡？')) return;
+  const feedback = [...document.querySelectorAll('input[name=cvFb]:checked')].map(x => x.value);
+  try {
+    const d = await api('careSubmit', { customerId: care.cur.id, result: r.value, appointmentDate, feedback, note: $('cvNote').value.trim() }, '送出中…');
+    okToast(`已送出，今天已完成 ${d.done} / ${d.limit}`);
+    await careLoad();
+  } catch (e) { toast(e.message); if (/重新載入/.test(e.message)) careLoad(); }
+}
+
+// ===== 總部：關懷管理 =====
+let ca = { init: null, seg: 'o', import: null, staff: [] };
+const nameOf = email => { const p = ca.staff.find(x => x.email === email); return p ? p.name || p.email : email || '（未分配）'; };
+async function careAdminOpen() {
+  show('v-careAdmin');
+  if (!ca.init) {
+    try { ca.init = await api('careAdminInit', {}, '載入中…'); } catch (e) { toast(e.message); return; }
+    ca.staff = ca.init.staff;
+    $('caStore').innerHTML = '<option value="">全部</option>' + ca.init.stores.map(x => `<option>${esc(x)}</option>`).join('');
+    $('psStore').innerHTML = '<option value="">（無）</option>' + ca.init.stores.map(x => `<option>${esc(x)}</option>`).join('');
+    caStaffOptions();
+    caPeriodChange(true);
+  }
+  caSeg(ca.seg);
+}
+function caStaffOptions() {
+  const callers = ca.staff.filter(x => x.role === '客服' || x.role === '養護師');
+  $('caContact').innerHTML = '<option value="">全部</option>' + callers.map(x => `<option value="${esc(x.email)}">${esc(x.name || x.email)}（${esc(x.role)}）</option>`).join('');
+  $('caRaTo').innerHTML = callers.filter(x => x.active).map(x => `<option value="${esc(x.email)}">${esc(x.name || x.email)}（${esc(x.role)}${x.store ? '・' + esc(x.store) : ''}）</option>`).join('');
+}
+function caSeg(k) {
+  ca.seg = k;
+  ['o', 'i', 'p', 's'].forEach(x => { $('caSeg' + x.toUpperCase()).className = x === k ? 'on' : ''; $('ca' + x.toUpperCase()).hidden = x !== k; });
+  if (k === 'o') caOverview();
+  if (k === 'p') caStaffRender();
+  if (k === 's') caSettingsRender();
+}
+function caPeriodChange(silent) {
+  const p = $('caPeriod').value, today = localToday();
+  $('caCustom').hidden = p !== 'custom';
+  if (p === 'week') { const dow = (new Date(today + 'T00:00:00Z').getUTCDay() + 6) % 7; $('caFrom').value = addDays(today, -dow); $('caTo').value = today; }
+  if (p === 'month') { $('caFrom').value = today.slice(0, 8) + '01'; $('caTo').value = today; }
+  if (!silent && p !== 'custom') caOverview();
+}
+const caFilters = () => ({ from: $('caFrom').value, to: $('caTo').value, store: $('caStore').value, type: $('caType').value, contact: $('caContact').value });
+async function caOverview() {
+  let d;
+  try { d = await api('careOverview', caFilters(), '載入中…'); } catch (e) { toast(e.message); return; }
+  ca.staff = d.staff;
+  const tile = (label, v, sub) => `<div><span>${label}</span><b>${v}</b>${sub ? ` <small>${sub}</small>` : ''}</div>`;
+  const maxFb = Math.max(1, ...Object.values(d.feedback));
+  const days = Object.keys(d.daily);
+  $('caOResult').innerHTML = `
+    ${d.alerts.length ? d.alerts.map(a => `<div class="flag red">🔴 異常請求：${esc(nameOf(a.email))}（${esc(a.time)}）1 分鐘內請求過多，已被拒絕</div>`).join('') : ''}
+    <div class="card"><h2>${esc(md($('caFrom').value || '----------'))}～${esc(md($('caTo').value || '----------'))}</h2>
+      <div class="grid2">
+        ${tile('聯絡數', fmt(d.contacts), `${fmt(d.contactedCustomers)} 位客人`)}
+        ${tile('已預約', fmt(d.byResult['已預約'] || 0))}
+        ${tile('喚回成功', fmt(d.recovered), `喚回率 ${d.recoveryRate}%`)}
+        ${tile('未接', fmt(d.byResult['未接'] || 0))}
+        ${tile('結案數', fmt(d.closed))}
+        ${tile('再預約／號碼錯誤／勿擾', `${d.byResult['之後需要再預約'] || 0}／${d.byResult['號碼錯誤'] || 0}／${d.byResult['請勿再聯絡'] || 0}`)}
+      </div>
+      <p class="hint">喚回率＝期間內喚回成功 ÷ 期間內聯絡過的客人數。</p>
+    </div>
+    <div class="card"><h2>目前各狀態人數</h2>${Object.entries(d.status).map(([k, v]) => `<div class="sum"><span>${esc(k)}</span><b>${fmt(v)}</b></div>`).join('')}</div>
+    <div class="card"><h2>客戶回饋</h2>${Object.entries(d.feedback).map(([k, v]) => `<div class="bar"><span title="${esc(k)}">${esc(k)}</span><i style="width:${v / maxFb * 100}%"></i><b>${v}</b></div>`).join('') || '<p class="hint">沒有回饋選項。</p>'}</div>
+    <div class="card"><h2>各聯絡人每日完成數</h2>${days.length ? days.map(e => {
+      const per = d.daily[e], dates = Object.keys(per).sort().reverse();
+      return `<div class="hist"><b>${esc(nameOf(e))}　共 ${fmt(dates.reduce((a, x) => a + per[x], 0))} 位</b><small>${dates.map(x => md(x) + ' ' + per[x]).join('・')}</small></div>`;
+    }).join('') : '<p class="hint">這段期間沒有聯絡紀錄。</p>'}</div>
+    ${d.unassigned.length ? `<div class="card"><h2>需要手動分配（${d.unassigned.length}）</h2>${d.unassigned.map(u => `<div class="sum"><span>${esc(u.id)}・${esc(u.store)}・${esc(u.type)}</span><b><button class="link" onclick="$('caRaId').value='${esc(u.id)}';$('caRaId').focus()">分配</button></b></div>`).join('')}</div>` : ''}`;
+}
+async function caReassign(id, email) {
+  if (!id) return toast('請輸入客人ID');
+  if (!email) return toast('請選擇要分給誰');
+  try { await api('careReassign', { customerId: id, email }, '處理中…'); okToast(`已把 ${id} 分給 ${nameOf(email)}`); $('caRaId').value = ''; caOverview(); }
+  catch (e) { toast(e.message); }
+}
+async function caExport() {
+  try {
+    const d = await api('careExport', caFilters(), '匯出中…');
+    const url = URL.createObjectURL(new Blob([d.csv], { type: 'text/csv;charset=utf-8' }));
+    const a = document.createElement('a'); a.href = url; a.download = d.filename; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    okToast(`已匯出 ${d.count} 筆`);
+  } catch (e) { toast(e.message); }
+}
+async function caRemoveDnd() {
+  const phone = $('caDnd').value.replace(/\D/g, '');
+  if (phone.length !== 10) return toast('請輸入 10 碼手機');
+  if (!confirm('確定要把這個手機從勿擾名單移除？移除後，下次匯入可能會再出現在關懷名單。')) return;
+  if (!confirm('再次確認：移除 ' + phone.slice(0, 4) + '***' + phone.slice(-3) + '？這個動作會記錄在操作紀錄。')) return;
+  try { await api('careRemoveDnd', { phone, confirm: true }, '處理中…'); $('caDnd').value = ''; okToast('已從勿擾名單移除'); }
+  catch (e) { toast(e.message); }
+}
+
+// ----- 匯入神美 -----
+function loadSheetJS() {
+  if (window.XLSX) return Promise.resolve();
+  return new Promise((ok, fail) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    s.onload = ok; s.onerror = () => fail(new Error('無法載入 Excel 讀取元件，請檢查網路'));
+    document.head.appendChild(s);
+  });
+}
+async function caPick(input) {
+  const file = input.files[0];
+  input.value = ''; ca.import = null; $('caIResult').innerHTML = '';
+  if (!file) return;
+  busy(true, '讀取檔案中…');
+  try {
+    await loadSheetJS();
+    const wb = XLSX.read(await file.arrayBuffer(), { type: 'array', cellDates: true });
+    let rows = null;
+    for (const n of wb.SheetNames) {
+      const r = XLSX.utils.sheet_to_json(wb.Sheets[n], { header: 1, raw: true, defval: '' });
+      if (r.some(x => x.includes('手機') && x.includes('訂單號碼'))) { rows = r; break; }
+    }
+    if (!rows) throw new Error('這不是神美「訂單列表」：找不到「訂單號碼」「手機」欄位');
+    ca.import = summarizeShenmei(rows, ca.init.settings.storeMap, localToday());
+  } catch (e) { busy(false); $('caIPreview').innerHTML = ''; toast(e.message); return; }
+  busy(false);
+  const s = ca.import.stats, list = ca.import.customers, cut = addDays(localToday(), -ca.init.settings.dormantDays);
+  const est = list.filter(c => c.lastDye && c.lastDye < cut && !(c.lastService > c.lastDye)).length;
+  $('caIPreview').innerHTML = `
+    <div class="sum"><span>訂單列數／訂單數</span><b>${fmt(s.rows)}／${fmt(s.orders)}</b></div>
+    <div class="sum"><span>客人數（有效手機）</span><b>${fmt(list.length)}</b></div>
+    <div class="sum"><span>其中儲值客</span><b>${fmt(list.filter(c => c.stored).length)}</b></div>
+    <div class="sum"><span>預估沉睡（尚未扣除勿擾、已在名單）</span><b>${fmt(est)}</b></div>
+    <div class="sum"><span>無效手機</span><b>${fmt(s.invalidPhones)}</b></div>
+    <div class="sum"><span>夥伴店（已排除）</span><b>${fmt(s.partnerRows)} 列</b></div>
+    ${s.unmappedStores.length ? `<div class="flag yellow">🟡 對應不到的店家（已略過，可到「設定」加入對應）：${s.unmappedStores.map(esc).join('、')}</div>` : ''}
+    <button class="btn" style="margin-top:12px" onclick="caImport()">確認匯入</button>`;
+}
+async function caImport() {
+  if (!ca.import) return;
+  const s = ca.import.stats;
+  let d;
+  try { d = await api('careImport', { customers: ca.import.customers, stats: { invalidPhones: s.invalidPhones, partnerRows: s.partnerRows, unmappedStores: s.unmappedStores } }, '匯入中，請稍候…'); }
+  catch (e) { toast(e.message); return; }
+  ca.import = null; $('caIPreview').innerHTML = '';
+  const stores = Object.entries(d.addedByStore);
+  $('caIResult').innerHTML = `<div class="card"><h2>匯入完成</h2>
+    <div class="sum big"><span>新增沉睡客人</span><b>${fmt(d.added['非儲值'] + d.added['儲值'])}</b></div>
+    <div class="sub2"><span>非儲值</span><b>${fmt(d.added['非儲值'])}</b></div><div class="sub2"><span>儲值</span><b>${fmt(d.added['儲值'])}</b></div>
+    ${stores.map(([k, v]) => `<div class="sub2"><span>${esc(k)}</span><b>非儲值 ${v['非儲值']}・儲值 ${v['儲值']}</b></div>`).join('')}
+    <div class="sum"><span>喚回成功</span><b>${fmt(d.recovered)}</b></div>
+    <div class="sum"><span>已自行回店</span><b>${fmt(d.selfReturned)}</b></div>
+    <div class="sum"><span>勿擾名單排除</span><b>${fmt(d.skippedDnd)}</b></div>
+    <div class="sum"><span>無效手機</span><b>${fmt(d.invalidPhones)}</b></div>
+    <div class="sum"><span>離職人員客人重新分配</span><b>${fmt(d.reassigned)}</b></div>
+    ${d.unmappedStores.length ? `<div class="flag yellow">🟡 對應不到的店家：${d.unmappedStores.map(esc).join('、')}</div>` : ''}
+    ${d.needManual.length ? `<h3 style="margin:14px 0 4px">需要手動分配（${d.needManual.length}）</h3>${d.needManual.map(u => `<div class="sub2"><span>${esc(u.id || '—')}・${esc(u.store)}</span><b>${esc(u.type)}</b></div>`).join('')}
+      <p class="hint">請到「總覽」的「手動重新分配」指定負責人，或先到「人員」新增該店的在職養護師。</p>` : ''}</div>`;
+}
+
+// ----- 人員 -----
+async function caStaffRender() {
+  try { ca.staff = (await api('staffList', {}, '載入中…')).staff; } catch (e) { toast(e.message); return; }
+  caStaffOptions();
+  $('psList').innerHTML = ca.staff.map((p, i) => `<div class="person"><div><b>${esc(p.name || '（未填姓名）')}</b>　${esc(p.role)}${p.store ? '・' + esc(p.store) : ''}${p.shenmei ? '・神美：' + esc(p.shenmei) : ''}
+      <small>${esc(p.email)}</small></div><div><span class="badge ${p.active ? 'ok' : 'bad'}">${p.active ? '在職' : '離職'}</span>
+      <button class="link" onclick="caStaffEdit(${i})">修改</button></div></div>`).join('') || '<p class="hint">還沒有人員。</p>';
+}
+function caStaffEdit(i) {
+  const p = ca.staff[i];
+  $('psEmail').value = p.email; $('psName').value = p.name; $('psRole').value = p.role; $('psStore').value = p.store; $('psShenmei').value = p.shenmei; $('psActive').checked = p.active;
+  window.scrollTo(0, 0);
+}
+async function caStaffSave() {
+  const person = { email: $('psEmail').value.trim(), name: $('psName').value.trim(), role: $('psRole').value, store: $('psStore').value, shenmei: $('psShenmei').value.trim(), active: $('psActive').checked };
+  if (!person.email) return toast('請填寫 Email');
+  try {
+    const d = await api('staffSave', { person }, '儲存中…');
+    ca.staff = d.staff; caStaffRender();
+    ['psEmail', 'psName', 'psShenmei'].forEach(id => $(id).value = ''); $('psActive').checked = true;
+    okToast('已儲存' + (d.reassigned ? `，重新分配 ${d.reassigned} 位客人` : ''));
+  } catch (e) { toast(e.message); }
+}
+
+// ----- 設定 -----
+function caSettingsRender() {
+  const s = ca.init.settings;
+  $('stLimit').value = s.dailyLimit; $('stDormant').value = s.dormantDays; $('stRetry').value = s.retryDays;
+  $('stWatch').value = s.watchDays; $('stAppt').value = s.apptWatchDays; $('stRetain').value = s.retainMonths;
+  $('stFeedback').value = s.feedbackOptions.join('、'); $('stScript').value = s.script;
+  $('stStoreMap').value = Object.entries(s.storeMap).map(([k, v]) => k + '=' + v).join('、');
+}
+async function caSaveSettings() {
+  const settings = { '關懷每日上限': $('stLimit').value, '沉睡天數': $('stDormant').value, '未接重撥間隔天數': $('stRetry').value, '觀察天數': $('stWatch').value,
+    '預約觀察天數': $('stAppt').value, '個資保留月數': $('stRetain').value, '客戶回饋選項': $('stFeedback').value, '神美店家對應': $('stStoreMap').value, '建議說法': $('stScript').value };
+  try { const d = await api('careSaveSettings', { settings }, '儲存中…'); ca.init.settings = d.settings; caSettingsRender(); okToast('設定已儲存'); }
+  catch (e) { toast(e.message); }
+}
+
+// <shenmei-parse> 神美訂單列表 → 每位客人摘要（純函式，tests/parse.test.js 會直接測這段）
+function smPhone(v) { // '' = 空白；null = 無效；否則 10 碼字串
+  if (v == null) return '';
+  let s = String(v).trim().replace(/\.0+$/, '').replace(/[\s\-()]/g, '');
+  if (s === '') return '';
+  if (/^9\d{8}$/.test(s)) s = '0' + s;
+  return /^\d{10}$/.test(s) ? s : null;
+}
+function smWhen(v) { // → { d: 'yyyy-mm-dd', ts: 'yyyy-mm-dd hh:mm' }
+  const p2 = n => String(n).padStart(2, '0');
+  if (v instanceof Date && !isNaN(v)) { const d = `${v.getFullYear()}-${p2(v.getMonth() + 1)}-${p2(v.getDate())}`; return { d, ts: `${d} ${p2(v.getHours())}:${p2(v.getMinutes())}` }; }
+  if (typeof v === 'number' && v > 20000 && v < 80000) { const x = new Date(Math.round((v - 25569) * 86400000)).toISOString(); return { d: x.slice(0, 10), ts: x.slice(0, 10) + ' ' + x.slice(11, 16) }; }
+  const m = String(v == null ? '' : v).match(/(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})(?:\D+(\d{1,2}):(\d{2}))?/);
+  if (!m) return null;
+  const d = `${m[1]}-${p2(m[2])}-${p2(m[3])}`;
+  return { d, ts: `${d} ${p2(m[4] || 0)}:${m[5] || '00'}` };
+}
+function summarizeShenmei(rows, storeMap, today) {
+  const hi = rows.findIndex(r => r.some(c => String(c).trim() === '手機') && r.some(c => String(c).trim() === '訂單號碼'));
+  if (hi < 0) throw new Error('找不到神美訂單列表的表頭（需要「訂單號碼」「手機」欄）');
+  const H = rows[hi].map(c => String(c).trim()), C = {};
+  const need = ['訂單號碼', '訂單時間', '店家', '會員', '手機', '分類', '品項', '工作人員', '消費方式'];
+  const miss = need.filter(n => H.indexOf(n) < 0);
+  if (miss.length) throw new Error('神美檔案缺少欄位：' + miss.join('、'));
+  need.forEach(n => C[n] = H.indexOf(n));
+  const year = today.slice(0, 4), people = {}, invalid = new Set(), unmapped = {};
+  const stats = { rows: 0, orders: 0, invalidPhones: 0, partnerRows: 0, unmappedStores: [] };
+  const str = v => String(v == null ? '' : v).trim();
+  let cur = null;
+  for (let i = hi + 1; i < rows.length; i++) {
+    const r = rows[i];
+    if (!r || r.every(c => c === '' || c == null)) continue;
+    const g = n => r[C[n]];
+    stats.rows++;
+    const no = str(g('訂單號碼')), timeRaw = g('訂單時間');
+    if (no || str(timeRaw)) { // 新訂單：訂單層級欄位只在第一列
+      const storeRaw = str(g('店家'));
+      cur = { when: smWhen(timeRaw), name: str(g('會員')), skip: '' };
+      stats.orders++;
+      if (/夥伴店/.test(storeRaw)) cur.skip = 'partner';
+      else if (!storeMap[storeRaw]) { cur.skip = 'unmapped'; unmapped[storeRaw || '（空白）'] = 1; }
+      else cur.store = storeMap[storeRaw];
+      const ph = smPhone(g('手機'));
+      if (ph === '') cur.skip = cur.skip || 'blank';
+      else if (ph === null) { if (cur.skip !== 'partner') invalid.add(str(g('手機'))); cur.skip = cur.skip || 'invalid'; }
+      else cur.phone = ph;
+      if (!cur.when) cur.skip = cur.skip || 'nodate';
+      if (!cur.skip) {
+        const p = people[cur.phone] = people[cur.phone] || { phone: cur.phone, name: '', nameTs: '', dyeDates: new Set(), lastDye: '', lastDyeTs: '', lastService: '', lastServiceTs: '', lastItem: '', lastStylist: '', store: '', anyStore: '', stored: false };
+        if (cur.when.ts >= p.nameTs && cur.name) { p.name = cur.name; p.nameTs = cur.when.ts; }
+        cur.p = p;
+      }
+    }
+    if (!cur) continue;
+    if (cur.skip === 'partner') { stats.partnerRows++; continue; }
+    if (cur.skip) continue;
+    const p = cur.p, cat = str(g('分類'));
+    if (/儲值金/.test(str(g('消費方式')))) p.stored = true;
+    if (/草本染髮/.test(cat)) {
+      if (cur.when.d.slice(0, 4) === year) p.dyeDates.add(cur.when.d);
+      if (cur.when.ts > p.lastDyeTs) { p.lastDyeTs = cur.when.ts; p.lastDye = cur.when.d; p.lastItem = str(g('品項')); p.lastStylist = str(g('工作人員')); p.store = cur.store; }
+    }
+    if (cat && cat !== '商品' && cat !== '經銷商' && cur.when.ts > p.lastServiceTs) { p.lastServiceTs = cur.when.ts; p.lastService = cur.when.d; p.anyStore = cur.store; }
+  }
+  stats.invalidPhones = invalid.size;
+  stats.unmappedStores = Object.keys(unmapped);
+  const customers = Object.values(people).filter(p => p.lastService || p.lastDye).map(p => ({
+    phone: p.phone, name: p.name, store: p.store || p.anyStore, lastDye: p.lastDye, lastService: p.lastService,
+    dyeCount: p.dyeDates.size, lastItem: p.lastItem, lastStylist: p.lastStylist, stored: p.stored,
+  }));
+  return { customers, stats };
+}
+// </shenmei-parse>
 
 start();
 </script>

@@ -1,0 +1,11 @@
+# 客人資料、神美匯出檔一律不得進 repo（本 repo 為 Public）
+*.xlsx
+*.xls
+*.csv
+*.numbers
+data/
+.env
+# 後端 Apps Script 程式不放進 repo（含獎金算法、權限邏輯）
+gas/
+*.gs
+node_modules/
