@@ -103,6 +103,17 @@
   .exp:last-child { border-bottom:0; }
   .exp small { color:var(--sub); display:block; font-size:13px; }
   .exp b { font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .viewbar { background:var(--brand); color:#fff; }
+  .viewbar .in { max-width:560px; margin:0 auto; padding:8px 16px; display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; font-size:15px; }
+  .viewbar .acts { display:flex; gap:6px; }
+  .viewbar button { min-height:40px; padding:0 12px; border:1px solid rgba(255,255,255,.6); border-radius:10px; background:transparent; color:#fff; font-size:15px; font-family:inherit; }
+  .pickbtn { display:flex; justify-content:space-between; align-items:center; width:100%; min-height:64px; padding:12px 18px; margin-bottom:10px; border:1px solid var(--line); border-radius:14px; background:var(--card); color:var(--ink); font-size:19px; font-weight:600; font-family:inherit; }
+  .pickbtn small { color:var(--sub); font-size:14px; font-weight:400; }
+  /* 總部唯讀檢視：隱藏所有會改資料的按鈕 */
+  body.ro #v-report > .btn, body.ro #v-expense .card:first-child .btn, body.ro #receiptPhotoBox, body.ro .names, body.ro #rSuggest button, body.ro #rDepWarn { display:none !important; }
+  body.ro input:disabled, body.ro select:disabled, body.ro textarea:disabled { color:var(--ink); -webkit-text-fill-color:var(--ink); opacity:1; background:var(--bg); }
+  body.ro .seg button:disabled { opacity:1; }
+  button.pick { width:100%; font-family:inherit; }
   #dlg { position:fixed; inset:0; z-index:18; background:rgba(74,59,47,.5); display:flex; align-items:center; justify-content:center; padding:16px; }
   #dlg .box { background:var(--card); border-radius:16px; padding:18px; width:100%; max-width:420px; }
   #dlg h2 { color:var(--red); }
@@ -145,7 +156,12 @@
 <header class="top"><div class="in">
   <div class="brand">頭沐 | CHIEFROM</div>
   <div class="who" id="who" hidden><span id="whoName"></span><button class="link" onclick="logout()">登出</button></div>
-</div></header>
+</div>
+  <div class="viewbar" id="viewBar" hidden><div class="in">
+    <span>總部檢視中：<b id="viewName"></b>（唯讀）</span>
+    <span class="acts"><button onclick="showPicker()">換門店</button><button onclick="exitView()">回總部畫面</button></span>
+  </div></div>
+</header>
 
 <div class="wrap">
 
@@ -197,6 +213,13 @@
       </div>
     </div>
     <div id="mList"></div>
+  </section>
+
+  <!-- 總部：選門店看店長畫面（唯讀） -->
+  <section id="v-pick" hidden>
+    <h1>門店畫面</h1>
+    <p class="hint" style="margin:-4px 0 14px">選一間門店，看店長看到的每日回報、零用金支出和紀錄。只能看，不能修改。</p>
+    <div id="pickList"></div>
   </section>
 
   <!-- 紀錄查詢（總部看全部；店長只看自己門店） -->
@@ -464,18 +487,23 @@ const GOOGLE_CLIENT_ID = '666667317547-qt7hdpi8du19tq2fb2genfvhkcs7hu5j.apps.goo
 
 const $ = id => document.getElementById(id);
 const LS = { api: 'chiefrom_api', session: 'chiefrom_session', name: 'chiefrom_name', names: 'chiefrom_names' };
-const VIEWS = ['v-setup', 'v-login', 'v-overview', 'v-monthly', 'v-records', 'v-report', 'v-confirm', 'v-done', 'v-expense', 'v-care', 'v-careAdmin'];
+const VIEWS = ['v-setup', 'v-login', 'v-pick', 'v-overview', 'v-monthly', 'v-records', 'v-report', 'v-confirm', 'v-done', 'v-expense', 'v-care', 'v-careAdmin'];
 const ROLES = ['總部', '經理', '店長', '客服', '養護師'];
 const TABS = {
   store: [['r', '每日回報'], ['e', '零用金<wbr>支出'], ['q', '紀錄'], ['c', '關懷']],
   admin: [['o', '每日總覽'], ['q', '紀錄'], ['m', '月報'], ['c', '關懷']],
+  staff: [['r', '每日回報'], ['e', '零用金<wbr>支出'], ['k', '關懷']], // 養護師：收班填報＋自己的關懷名單
+  hq: [['o', '每日總覽'], ['q', '紀錄'], ['m', '月報'], ['c', '關懷'], ['s', '門店<wbr>畫面']], // 總部（經理沒有門店畫面）
+  view: [['r', '每日回報'], ['e', '零用金<wbr>支出'], ['q', '紀錄']], // 總部唯讀檢視某間店
 };
-const VIEW_TAB = { 'v-report': 'r', 'v-confirm': 'r', 'v-done': 'r', 'v-expense': 'e', 'v-records': 'q', 'v-overview': 'o', 'v-monthly': 'm', 'v-careAdmin': 'c' };
+const VIEW_TAB = { 'v-report': 'r', 'v-confirm': 'r', 'v-done': 'r', 'v-expense': 'e', 'v-records': 'q', 'v-overview': 'o', 'v-monthly': 'm', 'v-careAdmin': 'c', 'v-care': 'k', 'v-pick': 's' };
 const PHOTOS = {
   deposit: { box: 'depositPhotoBox', label: '匯款證明' },
   receipt: { box: 'receiptPhotoBox', label: '收據照片' },
 };
 let session = null;          // {token, email, name, role(總部/經理/店長/客服/養護師), store, stores, expires, checks, categories, settings}
+let viewStore = null;        // 總部正在檢視的門店（唯讀）；null 表示一般模式
+let storeNames = [];         // 總部用：門店清單
 let curStore = '';           // 店長目前操作的門店（負責多間店時可切換）
 let ctx = { r: null, e: null }; // 每日回報／支出各自的當日資訊
 let photos = {};             // key -> dataURL（新選的照片）
@@ -502,7 +530,8 @@ function localToday() {
 
 function show(id) {
   VIEWS.forEach(v => $(v).hidden = v !== id);
-  const cur = VIEW_TAB[id], tabs = !session ? null : seesAll() ? TABS.admin : session.role === '店長' ? TABS.store : null;
+  $('viewBar').hidden = !viewStore;
+  const cur = VIEW_TAB[id], tabs = !session ? null : viewStore ? TABS.view : isAdmin() ? TABS.hq : seesAll() ? TABS.admin : session.role === '店長' ? TABS.store : staffFills() ? TABS.staff : null;
   $('tabs').hidden = !(tabs && cur);
   if (tabs && cur) $('tabsIn').innerHTML = tabs.map(([k, label]) =>
     `<button class="${k === cur ? 'on' : ''}" onclick="tab('${k}')">${label}</button>`).join('');
@@ -572,6 +601,7 @@ async function onGoogleLogin(resp) {
   } catch (e) { session = null; toast(e.message); }
 }
 function logout() {
+  viewStore = null; applyReadonly();
   const token = session && session.token;
   if (token && apiUrl()) fetch(apiUrl(), { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'logout', token }) }).catch(() => {});
   if (window.google && google.accounts && google.accounts.id) google.accounts.id.disableAutoSelect();
@@ -580,8 +610,16 @@ function logout() {
   careClear();
   start();
 }
-function enter() {
-  if (session.role === '客服' || session.role === '養護師') return careStart();
+async function enter() {
+  const ok = await enterInner();
+  if (ok !== false) return;
+  // 開啟時載入失敗（例如瀏覽器留著不相符的登入狀態）→ 回到登入畫面，不要停在空白頁
+  const why = $('toast').hidden ? '' : $('toast').textContent;
+  logout();
+  setTimeout(() => toast('無法載入資料，請重新登入。' + (why ? '（' + why + '）' : '')), 300);
+}
+function enterInner() {
+  if (session.role === '客服' || (session.role === '養護師' && !staffFills())) return careStart();
   session.checks = session.checks || []; session.categories = session.categories || [];
   const today = localToday();
   queried = false; details = {};
@@ -592,23 +630,69 @@ function enter() {
   if (seesAll()) {
     $('oDate').value = today; $('oDate').max = today; month = today.slice(0, 7);
     $('qStore').innerHTML = '<option value="">全部門店</option>';
-    loadOverview();
-    api('stores', {}).then(d => { $('qStore').innerHTML += d.stores.map(n => `<option>${esc(n)}</option>`).join(''); }).catch(() => {});
-    return;
+    const loading = loadOverview();
+    api('stores', {}).then(d => { storeNames = d.stores; $('qStore').innerHTML += d.stores.map(n => `<option>${esc(n)}</option>`).join(''); }).catch(() => {});
+    return loading;
   }
-  curStore = myStores()[0] || '';
-  const opts = myStores().map(n => `<option>${esc(n)}</option>`).join('');
-  ['r', 'e'].forEach(k => { $(k + 'Date').value = today; $(k + 'Date').max = today; $(k + 'Store').innerHTML = opts; $(k + 'Store').value = curStore; $(k + 'Store').disabled = myStores().length < 2; });
-  $('qStore').innerHTML = '<option value="">我負責的全部門店</option>' + opts;
-  const name = savedNames()[0] || '';
+  setupStoreForms(myStores());
+  $('qStore').innerHTML = '<option value="">我負責的全部門店</option>' + myStores().map(n => `<option>${esc(n)}</option>`).join('');
+  if (staffFills()) return careStart(); // 養護師登入後先看關懷頁，收班時切到「每日回報」
+  return loadDay('r');
+}
+/** 準備每日回報與支出表單（店長、養護師登入時，或總部檢視某間店時） */
+function setupStoreForms(stores) {
+  const today = localToday();
+  curStore = stores[0] || '';
+  const opts = stores.map(n => `<option>${esc(n)}</option>`).join('');
+  ['r', 'e'].forEach(k => { $(k + 'Date').value = today; $(k + 'Date').max = today; $(k + 'Store').innerHTML = opts; $(k + 'Store').value = curStore; $(k + 'Store').disabled = stores.length < 2; });
+  ctx = { r: null, e: null };
+  const name = viewStore ? '' : savedNames()[0] || '';
   $('rReporter').value = name; $('eHandler').value = name;
   renderNames();
   $('eCategory').innerHTML = '<option value="">請選擇</option>' + session.categories.map(c => `<option>${esc(c)}</option>`).join('');
   $('rChecks').innerHTML = session.checks.map(c => `
     <label class="check"><input type="checkbox" id="chk-${c.key}" onchange="toggleReason('${c.key}')">${esc(c.label)}</label>
     <div class="reason" id="why-${c.key}"><input id="reason-${c.key}" maxlength="300" placeholder="未完成原因（必填）"></div>`).join('');
-  Object.keys(PHOTOS).forEach(renderPhoto);
+  photos = {};
+  Object.keys(PHOTOS).forEach(k => renderPhoto(k));
+  applyReadonly();
+}
+
+// ===== 總部：門店畫面（唯讀檢視，經理沒有這個功能） =====
+async function showPicker() {
+  if (!isAdmin()) return;
+  if (viewStore) { viewStore = null; applyReadonly(); }
+  if (!storeNames.length) {
+    try { storeNames = (await api('stores', {}, '載入中…')).stores; } catch (e) { toast(e.message); return; }
+  }
+  $('pickList').innerHTML = storeNames.map((n, i) =>
+    `<button class="pickbtn" onclick="enterView(${i})"><span>${esc(n)}</span><small>看店長畫面 ›</small></button>`).join('')
+    || '<div class="card">「設定」分頁裡沒有啟用中的門店。</div>';
+  show('v-pick');
+}
+function enterView(i) {
+  viewStore = storeNames[i];
+  $('viewName').textContent = viewStore;
+  queried = false; details = {};
+  $('qStoreBox').hidden = true; $('qList').innerHTML = ''; $('qSeg').hidden = true;
+  setupStoreForms([viewStore]);
   loadDay('r');
+}
+function exitView() {
+  viewStore = null; curStore = ''; applyReadonly();
+  ctx = { r: null, e: null }; queried = false; details = {};
+  $('qStoreBox').hidden = false; $('qList').innerHTML = ''; $('qSeg').hidden = true;
+  loadOverview();
+}
+/** 唯讀時鎖住填報與支出表單（日期仍可切換） */
+function applyReadonly() {
+  const ro = !!viewStore;
+  document.body.classList.toggle('ro', ro);
+  ['v-report', 'v-expense'].forEach(v => $(v).querySelectorAll('input, select, textarea, .seg button').forEach(el => {
+    if (el.id === 'rDate' || el.id === 'eDate') return;
+    if (el.id === 'rStore' || el.id === 'eStore') { if (ro) el.disabled = true; return; }
+    el.disabled = ro;
+  }));
 }
 // ===== 記住最近用過的名字（存在這台裝置上，最多 5 個） =====
 function savedNames() {
@@ -634,7 +718,9 @@ function renderNames() {
 function pickName(input, i) { $(input).value = savedNames()[i] || ''; renderNames(); }
 function toggleReason(key) { $('why-' + key).hidden = $('chk-' + key).checked; }
 function tab(k) {
-  if (k === 'c') careAdminOpen();
+  if (k === 's') showPicker();
+  else if (k === 'c') careAdminOpen();
+  else if (k === 'k') careStart();
   else if (k === 'o') loadOverview();
   else if (k === 'm') loadMonthly();
   else if (k === 'q') { show('v-records'); if (!queried) runQuery(); }
@@ -645,6 +731,10 @@ function tab(k) {
 // ===== 照片欄位 =====
 function renderPhoto(key, existing) {
   const p = PHOTOS[key], has = photos[key];
+  if (viewStore) {
+    $(p.box).innerHTML = existing ? `<div class="photo done"><button type="button" class="pick" onclick="viewPhoto('${esc(existing)}')">看${p.label}</button></div>` : '';
+    return;
+  }
   const text = has ? '已選擇照片，點此可重選' : existing ? '已上傳，點此可重新上傳' : '拍照／選擇' + p.label + '（必附）';
   $(p.box).innerHTML = `<div class="photo ${has || existing ? 'done' : ''}">
     <label><input type="file" accept="image/*" onchange="pickPhoto('${key}', this)"><span class="pick">${has || existing ? '✓ ' : ''}${text}</span></label>
@@ -695,12 +785,18 @@ async function loadDay(k) {
     if (d.settings) session.settings = d.settings;
     if (k === 'r') fillReport(); else fillExpenses(d);
     show(k === 'r' ? 'v-report' : 'v-expense');
-  } catch (e) { toast(e.message); }
+    return true;
+  } catch (e) { toast(e.message); return false; }
 }
 function fillReport() {
+  setTimeout(applyReadonly);
   const d = ctx.r, r = d.report;
   delete photos.deposit; $('depositPhotoBox').hidden = true; // 讓 recalc 重新畫出匯款證明欄位
-  $('rExisting').hidden = !r;
+  $('rExisting').textContent = viewStore
+    ? (r ? `${clean(r.reporter)} 於 ${r.submittedAt.slice(5, 16).replace('-', '/')} 送出。總部檢視中，只能看不能改。` : '這一天尚未回報。')
+    : '這一天已經回報過了。重新送出會覆蓋原本的內容，已上傳的照片不用重傳。';
+  $('rExisting').hidden = !r && !viewStore;
+  if (viewStore && !r) $('rReporter').value = '';
   const set = (id, v) => $(id).value = r ? v : '';
   set('rCash', r && r.cash); set('rCard', r && r.card); set('rTransfer', r && r.transfer); set('rNew', r && r.newCustomers); set('rOld', r && r.oldCustomers);
   const hasStored = !!r && (r.storedCash || 0) + (r.storedCard || 0) > 0;
@@ -818,6 +914,7 @@ function noteHtml(c, s) {
   return h;
 }
 function toConfirm() {
+  if (viewStore) return toast('總部檢視中，不能修改資料');
   const need = [['rReporter', '填報人'], ['rCash', '現金'], ['rCard', '刷卡'], ['rTransfer', '轉帳／電子支付'], ['rNew', '新客數（沒有請填 0）'], ['rOld', '舊客數（沒有請填 0）'],
     ['rDepRev', '今日現金存入（沒存請填 0）'], ['rDepPetty', '現場零用金超額存入（沒存請填 0）']];
   for (const [id, label] of need) {
@@ -854,6 +951,7 @@ function toConfirm() {
   show('v-confirm');
 }
 async function submitReport() {
+  if (viewStore) return toast('總部檢視中，不能修改資料');
   const send = {};
   if (draft.deposit > 0 && photos.deposit) send.deposit = photos.deposit;
   try {
@@ -879,6 +977,7 @@ function fillExpenses(d) {
     : '<p class="hint">這一天還沒有登記支出。</p>';
 }
 async function submitExpense() {
+  if (viewStore) return toast('總部檢視中，不能修改資料');
   const handler = $('eHandler').value.trim(), item = $('eItem').value.trim(), amount = val('eAmount');
   if (!handler) return toast('請填寫「經手人」');
   if (!item) return toast('請填寫「品項」');
@@ -936,11 +1035,13 @@ function reportDetailHtml(r) {
 function expenseRowsHtml(list, withMeta) {
   return list.map(x => `
     <div class="exp"><div>${esc(clean(x.item))}<small>${withMeta ? md(x.date) + '・' + esc(x.store) + '・' : ''}${esc(x.category)}・${esc(clean(x.handler))}・
-      <button class="link" style="padding:0" onclick="viewPhoto('${esc(x.photo)}')">看收據</button>${isAdmin() ? `・<button class="link" style="padding:0;color:var(--red)" onclick="askDelete(${delTarget({ type: 'expense', store: x.store, date: x.date, id: x.id, label: `${md(x.date)} ${x.store} 的支出「${clean(x.item)}」${fmt(x.amount)} 元` })})">刪除</button>` : ''}</small></div><b>${fmt(x.amount)}</b></div>`).join('');
+      <button class="link" style="padding:0" onclick="viewPhoto('${esc(x.photo)}')">看收據</button>${canDelete() ? `・<button class="link" style="padding:0;color:var(--red)" onclick="askDelete(${delTarget({ type: 'expense', store: x.store, date: x.date, id: x.id, label: `${md(x.date)} ${x.store} 的支出「${clean(x.item)}」${fmt(x.amount)} 元` })})">刪除</button>` : ''}</small></div><b>${fmt(x.amount)}</b></div>`).join('');
 }
 
 // ===== 總部：刪除紀錄 =====
 const isAdmin = () => !!session && session.role === '總部';
+const canDelete = () => isAdmin() && !viewStore;
+const staffFills = () => !!session && session.role === '養護師' && session.canReport === true; // 養護師可填每日回報
 const seesAll = () => !!session && (session.role === '總部' || session.role === '經理'); // 每日總覽、月報、所有門店
 const myStores = () => (session && (session.stores && session.stores.length ? session.stores : session.store ? [session.store] : [])) || [];
 function switchStore(v) {
@@ -978,7 +1079,7 @@ async function toggleDetail(id) {
       const list = d.expenses.filter(x => x.store === r.store);
       exp = `<h3>當日支出（${list.length} 筆，合計 ${fmt(list.reduce((a, x) => a + x.amount, 0))}）</h3>` + (expenseRowsHtml(list) || '<p class="hint">沒有登記支出。</p>');
     } catch (e) { toast(e.message); return; }
-    box.innerHTML = reportDetailHtml(r) + exp + (isAdmin()
+    box.innerHTML = reportDetailHtml(r) + exp + (canDelete()
       ? `<button class="del" onclick="askDelete(${delTarget({ type: 'report', store: r.store, date: r.date, label: `${md(r.date)} ${r.store} 的每日回報` })})">刪除這筆每日回報</button>` : '');
   }
   box.hidden = false; btn.textContent = '收起明細 ▴';
@@ -997,7 +1098,7 @@ function shiftDay(n) {
 async function loadOverview() {
   const date = $('oDate').value || localToday();
   let d;
-  try { d = await api('dashboard', { date }, '載入中…'); } catch (e) { toast(e.message); return; }
+  try { d = await api('dashboard', { date }, '載入中…'); } catch (e) { toast(e.message); return false; }
   details = {};
   const done = d.rows.filter(x => x.reported);
   $('oSummary').innerHTML = `${md(d.date)}　已回報 <b>${done.length}／${d.rows.length}</b> 間　全店總營收 <b>${fmt(done.reduce((a, x) => a + x.report.total, 0))}</b>　來客 <b>${fmt(done.reduce((a, x) => a + x.report.customers, 0))}</b>　（${d.now.slice(11, 16)} 更新）`;
@@ -1015,6 +1116,7 @@ async function loadOverview() {
       ${metricsHtml(r)}${detailToggleHtml('o' + i, r)}</div>`;
   }).join('') || '<div class="card">「設定」分頁裡沒有啟用中的門店。</div>';
   show('v-overview');
+  return true;
 }
 
 // ===== 紀錄查詢 =====
@@ -1022,7 +1124,7 @@ async function runQuery() {
   const from = $('qFrom').value, to = $('qTo').value;
   if (!from || !to) return toast('請選擇開始與結束日期');
   if (from > to) return toast('開始日期不能晚於結束日期');
-  try { qData = await api('records', { store: $('qStore').value, from, to }, '查詢中…'); } catch (e) { toast(e.message); return; }
+  try { qData = await api('records', { store: viewStore || $('qStore').value, from, to }, '查詢中…'); } catch (e) { toast(e.message); return; }
   queried = true;
   $('qSeg').hidden = false;
   qMode(qView);
