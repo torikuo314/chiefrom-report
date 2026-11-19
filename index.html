@@ -469,8 +469,9 @@ const ROLES = ['總部', '經理', '店長', '客服', '養護師'];
 const TABS = {
   store: [['r', '每日回報'], ['e', '零用金<wbr>支出'], ['q', '紀錄'], ['c', '關懷']],
   admin: [['o', '每日總覽'], ['q', '紀錄'], ['m', '月報'], ['c', '關懷']],
+  staff: [['r', '每日回報'], ['e', '零用金<wbr>支出'], ['k', '關懷']], // 養護師：收班填報＋自己的關懷名單
 };
-const VIEW_TAB = { 'v-report': 'r', 'v-confirm': 'r', 'v-done': 'r', 'v-expense': 'e', 'v-records': 'q', 'v-overview': 'o', 'v-monthly': 'm', 'v-careAdmin': 'c' };
+const VIEW_TAB = { 'v-report': 'r', 'v-confirm': 'r', 'v-done': 'r', 'v-expense': 'e', 'v-records': 'q', 'v-overview': 'o', 'v-monthly': 'm', 'v-careAdmin': 'c', 'v-care': 'k' };
 const PHOTOS = {
   deposit: { box: 'depositPhotoBox', label: '匯款證明' },
   receipt: { box: 'receiptPhotoBox', label: '收據照片' },
@@ -502,7 +503,7 @@ function localToday() {
 
 function show(id) {
   VIEWS.forEach(v => $(v).hidden = v !== id);
-  const cur = VIEW_TAB[id], tabs = !session ? null : seesAll() ? TABS.admin : session.role === '店長' ? TABS.store : null;
+  const cur = VIEW_TAB[id], tabs = !session ? null : seesAll() ? TABS.admin : session.role === '店長' ? TABS.store : staffFills() ? TABS.staff : null;
   $('tabs').hidden = !(tabs && cur);
   if (tabs && cur) $('tabsIn').innerHTML = tabs.map(([k, label]) =>
     `<button class="${k === cur ? 'on' : ''}" onclick="tab('${k}')">${label}</button>`).join('');
@@ -580,8 +581,16 @@ function logout() {
   careClear();
   start();
 }
-function enter() {
-  if (session.role === '客服' || session.role === '養護師') return careStart();
+async function enter() {
+  const ok = await enterInner();
+  if (ok !== false) return;
+  // 開啟時載入失敗（例如瀏覽器留著不相符的登入狀態）→ 回到登入畫面，不要停在空白頁
+  const why = $('toast').hidden ? '' : $('toast').textContent;
+  logout();
+  setTimeout(() => toast('無法載入資料，請重新登入。' + (why ? '（' + why + '）' : '')), 300);
+}
+function enterInner() {
+  if (session.role === '客服' || (session.role === '養護師' && !staffFills())) return careStart();
   session.checks = session.checks || []; session.categories = session.categories || [];
   const today = localToday();
   queried = false; details = {};
@@ -592,9 +601,9 @@ function enter() {
   if (seesAll()) {
     $('oDate').value = today; $('oDate').max = today; month = today.slice(0, 7);
     $('qStore').innerHTML = '<option value="">全部門店</option>';
-    loadOverview();
+    const loading = loadOverview();
     api('stores', {}).then(d => { $('qStore').innerHTML += d.stores.map(n => `<option>${esc(n)}</option>`).join(''); }).catch(() => {});
-    return;
+    return loading;
   }
   curStore = myStores()[0] || '';
   const opts = myStores().map(n => `<option>${esc(n)}</option>`).join('');
@@ -608,7 +617,8 @@ function enter() {
     <label class="check"><input type="checkbox" id="chk-${c.key}" onchange="toggleReason('${c.key}')">${esc(c.label)}</label>
     <div class="reason" id="why-${c.key}"><input id="reason-${c.key}" maxlength="300" placeholder="未完成原因（必填）"></div>`).join('');
   Object.keys(PHOTOS).forEach(renderPhoto);
-  loadDay('r');
+  if (staffFills()) return careStart(); // 養護師登入後先看關懷頁，收班時切到「每日回報」
+  return loadDay('r');
 }
 // ===== 記住最近用過的名字（存在這台裝置上，最多 5 個） =====
 function savedNames() {
@@ -635,6 +645,7 @@ function pickName(input, i) { $(input).value = savedNames()[i] || ''; renderName
 function toggleReason(key) { $('why-' + key).hidden = $('chk-' + key).checked; }
 function tab(k) {
   if (k === 'c') careAdminOpen();
+  else if (k === 'k') careStart();
   else if (k === 'o') loadOverview();
   else if (k === 'm') loadMonthly();
   else if (k === 'q') { show('v-records'); if (!queried) runQuery(); }
@@ -695,7 +706,8 @@ async function loadDay(k) {
     if (d.settings) session.settings = d.settings;
     if (k === 'r') fillReport(); else fillExpenses(d);
     show(k === 'r' ? 'v-report' : 'v-expense');
-  } catch (e) { toast(e.message); }
+    return true;
+  } catch (e) { toast(e.message); return false; }
 }
 function fillReport() {
   const d = ctx.r, r = d.report;
@@ -941,6 +953,7 @@ function expenseRowsHtml(list, withMeta) {
 
 // ===== 總部：刪除紀錄 =====
 const isAdmin = () => !!session && session.role === '總部';
+const staffFills = () => !!session && session.role === '養護師' && session.canReport === true; // 養護師可填每日回報
 const seesAll = () => !!session && (session.role === '總部' || session.role === '經理'); // 每日總覽、月報、所有門店
 const myStores = () => (session && (session.stores && session.stores.length ? session.stores : session.store ? [session.store] : [])) || [];
 function switchStore(v) {
@@ -997,7 +1010,7 @@ function shiftDay(n) {
 async function loadOverview() {
   const date = $('oDate').value || localToday();
   let d;
-  try { d = await api('dashboard', { date }, '載入中…'); } catch (e) { toast(e.message); return; }
+  try { d = await api('dashboard', { date }, '載入中…'); } catch (e) { toast(e.message); return false; }
   details = {};
   const done = d.rows.filter(x => x.reported);
   $('oSummary').innerHTML = `${md(d.date)}　已回報 <b>${done.length}／${d.rows.length}</b> 間　全店總營收 <b>${fmt(done.reduce((a, x) => a + x.report.total, 0))}</b>　來客 <b>${fmt(done.reduce((a, x) => a + x.report.customers, 0))}</b>　（${d.now.slice(11, 16)} 更新）`;
@@ -1015,6 +1028,7 @@ async function loadOverview() {
       ${metricsHtml(r)}${detailToggleHtml('o' + i, r)}</div>`;
   }).join('') || '<div class="card">「設定」分頁裡沒有啟用中的門店。</div>';
   show('v-overview');
+  return true;
 }
 
 // ===== 紀錄查詢 =====
