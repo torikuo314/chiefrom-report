@@ -224,7 +224,7 @@
     <div class="card">
       <div class="row2">
         <label class="f"><b>日期</b><input id="rDate" type="date" onchange="loadDay('r')"></label>
-        <label class="f"><b>門店</b><input id="rStore" readonly></label>
+        <label class="f"><b>門店</b><select id="rStore" onchange="switchStore(this.value)"></select></label>
       </div>
       <label class="f"><b>填報人</b><input id="rReporter" maxlength="30" placeholder="你的名字" oninput="renderNames()"></label>
       <div class="names" id="rNames" style="margin-bottom:0"></div>
@@ -327,7 +327,7 @@
     <div class="card">
       <div class="row2">
         <label class="f"><b>日期</b><input id="eDate" type="date" onchange="loadDay('e')"></label>
-        <label class="f"><b>門店</b><input id="eStore" readonly></label>
+        <label class="f"><b>門店</b><select id="eStore" onchange="switchStore(this.value)"></select></label>
       </div>
       <label class="f"><b>經手人</b><input id="eHandler" maxlength="30" placeholder="你的名字" oninput="renderNames()"></label>
       <div class="names" id="eNames"></div>
@@ -356,7 +356,7 @@
   <!-- 總部：關懷總覽／匯入／人員／設定 -->
   <section id="v-careAdmin" hidden>
     <h1>關懷管理</h1>
-    <div class="seg four">
+    <div class="seg four" id="caSegBar">
       <button id="caSegO" onclick="caSeg('o')">總覽</button>
       <button id="caSegI" onclick="caSeg('i')">匯入神美</button>
       <button id="caSegP" onclick="caSeg('p')">人員</button>
@@ -378,7 +378,7 @@
         <button class="btn" onclick="caOverview()">查詢</button>
       </div>
       <div id="caOResult"></div>
-      <div class="card">
+      <div class="card" id="caRaCard">
         <h2>手動重新分配</h2>
         <div class="row2">
           <label class="f"><b>客人ID</b><input id="caRaId" maxlength="20" placeholder="例如 C00012" autocomplete="off"></label>
@@ -386,7 +386,7 @@
         </div>
         <button class="btn ghost" onclick="caReassign($('caRaId').value.trim(), $('caRaTo').value)">重新分配</button>
       </div>
-      <div class="card">
+      <div class="card" id="caExCard">
         <h2>匯出與勿擾名單</h2>
         <button class="btn ghost" onclick="caExport()">匯出目前篩選的關懷紀錄（.csv）</button>
         <p class="hint">匯出會記錄在「操作紀錄」。</p>
@@ -413,13 +413,13 @@
         <label class="f"><b>Google 帳號 Email</b><input id="psEmail" type="email" autocomplete="off" maxlength="100"></label>
         <label class="f"><b>姓名</b><input id="psName" maxlength="50"></label>
         <div class="row2">
-          <label class="f"><b>角色</b><select id="psRole"><option>總部</option><option>店長</option><option>客服</option><option>養護師</option></select></label>
-          <label class="f"><b>店家</b><select id="psStore"></select></label>
+          <label class="f"><b>角色</b><select id="psRole"><option>總部</option><option>經理</option><option>店長</option><option>客服</option><option>養護師</option></select></label>
+          <label class="f"><b>店家</b><input id="psStore" maxlength="60" placeholder="多間用「、」分隔"></label>
         </div>
         <label class="f"><b>神美名稱</b>（養護師必填）<input id="psShenmei" maxlength="50" placeholder="神美「工作人員」上的名字"></label>
         <label class="check"><input type="checkbox" id="psActive" checked>在職</label>
         <button class="btn" onclick="caStaffSave()">儲存</button>
-        <p class="hint">改成「離職」時，她名下未結案的客人會自動重新分配。</p>
+        <p class="hint">店長可以負責多間店，例如「本館、散步二館」；總部、經理、客服的店家留空白。改成「離職」時，她名下未結案的客人會自動重新分配。</p>
       </div>
       <div class="card"><h2>人員名單</h2><div id="psList"></div></div>
     </div>
@@ -465,9 +465,9 @@ const GOOGLE_CLIENT_ID = '666667317547-qt7hdpi8du19tq2fb2genfvhkcs7hu5j.apps.goo
 const $ = id => document.getElementById(id);
 const LS = { api: 'chiefrom_api', session: 'chiefrom_session', name: 'chiefrom_name', names: 'chiefrom_names' };
 const VIEWS = ['v-setup', 'v-login', 'v-overview', 'v-monthly', 'v-records', 'v-report', 'v-confirm', 'v-done', 'v-expense', 'v-care', 'v-careAdmin'];
-const ROLES = ['總部', '店長', '客服', '養護師'];
+const ROLES = ['總部', '經理', '店長', '客服', '養護師'];
 const TABS = {
-  store: [['r', '每日回報'], ['e', '現場零用金<wbr>支出'], ['q', '紀錄']],
+  store: [['r', '每日回報'], ['e', '零用金<wbr>支出'], ['q', '紀錄'], ['c', '關懷']],
   admin: [['o', '每日總覽'], ['q', '紀錄'], ['m', '月報'], ['c', '關懷']],
 };
 const VIEW_TAB = { 'v-report': 'r', 'v-confirm': 'r', 'v-done': 'r', 'v-expense': 'e', 'v-records': 'q', 'v-overview': 'o', 'v-monthly': 'm', 'v-careAdmin': 'c' };
@@ -475,7 +475,8 @@ const PHOTOS = {
   deposit: { box: 'depositPhotoBox', label: '匯款證明' },
   receipt: { box: 'receiptPhotoBox', label: '收據照片' },
 };
-let session = null;          // {token, email, name, role(總部/店長/客服/養護師), store, expires, checks, categories, settings}
+let session = null;          // {token, email, name, role(總部/經理/店長/客服/養護師), store, stores, expires, checks, categories, settings}
+let curStore = '';           // 店長目前操作的門店（負責多間店時可切換）
 let ctx = { r: null, e: null }; // 每日回報／支出各自的當日資訊
 let photos = {};             // key -> dataURL（新選的照片）
 let draft = null;            // 確認畫面的內容
@@ -501,12 +502,12 @@ function localToday() {
 
 function show(id) {
   VIEWS.forEach(v => $(v).hidden = v !== id);
-  const cur = VIEW_TAB[id], tabs = !session ? null : isAdmin() ? TABS.admin : session.role === '店長' ? TABS.store : null;
+  const cur = VIEW_TAB[id], tabs = !session ? null : seesAll() ? TABS.admin : session.role === '店長' ? TABS.store : null;
   $('tabs').hidden = !(tabs && cur);
   if (tabs && cur) $('tabsIn').innerHTML = tabs.map(([k, label]) =>
     `<button class="${k === cur ? 'on' : ''}" onclick="tab('${k}')">${label}</button>`).join('');
   $('who').hidden = !session;
-  if (session) $('whoName').textContent = session.role === '店長' ? session.store : (session.name || session.role);
+  if (session) $('whoName').textContent = session.role === '店長' ? myStores().join('、') : (session.name || session.role);
   window.scrollTo(0, 0);
 }
 let toastTimer;
@@ -586,16 +587,19 @@ function enter() {
   queried = false; details = {};
   $('qFrom').value = addDays(today, -6); $('qTo').value = today; $('qFrom').max = today; $('qTo').max = today;
   $('qList').innerHTML = ''; $('qSeg').hidden = true;
-  $('qStoreBox').hidden = !isAdmin();
+  $('qStoreBox').hidden = !(seesAll() || myStores().length > 1);
   ca.init = null;
-  if (isAdmin()) {
+  if (seesAll()) {
     $('oDate').value = today; $('oDate').max = today; month = today.slice(0, 7);
     $('qStore').innerHTML = '<option value="">全部門店</option>';
     loadOverview();
     api('stores', {}).then(d => { $('qStore').innerHTML += d.stores.map(n => `<option>${esc(n)}</option>`).join(''); }).catch(() => {});
     return;
   }
-  ['r', 'e'].forEach(k => { $(k + 'Date').value = today; $(k + 'Date').max = today; $(k + 'Store').value = session.store; });
+  curStore = myStores()[0] || '';
+  const opts = myStores().map(n => `<option>${esc(n)}</option>`).join('');
+  ['r', 'e'].forEach(k => { $(k + 'Date').value = today; $(k + 'Date').max = today; $(k + 'Store').innerHTML = opts; $(k + 'Store').value = curStore; $(k + 'Store').disabled = myStores().length < 2; });
+  $('qStore').innerHTML = '<option value="">我負責的全部門店</option>' + opts;
   const name = savedNames()[0] || '';
   $('rReporter').value = name; $('eHandler').value = name;
   renderNames();
@@ -686,7 +690,7 @@ const val = id => $(id).value === '' ? null : Number($(id).value);
 async function loadDay(k) {
   const date = $(k + 'Date').value || localToday();
   try {
-    const d = await api('dayContext', { date }, '載入中…');
+    const d = await api('dayContext', { date, store: curStore }, '載入中…');
     ctx[k] = d;
     if (d.settings) session.settings = d.settings;
     if (k === 'r') fillReport(); else fillExpenses(d);
@@ -835,14 +839,14 @@ function toConfirm() {
   }
   const s = ctx.r.settings;
   Object.assign(c, { prevCounted: ctx.r.prevCounted, expenseTotal: ctx.r.expenseTotal });
-  draft = { date: $('rDate').value, reporter: $('rReporter').value.trim(), cash: c.cash, card: c.card, transfer: c.transfer, hasStored: c.hasStored, storedCash: c.storedCash, storedCard: c.storedCard,
+  draft = { store: curStore, date: $('rDate').value, reporter: $('rReporter').value.trim(), cash: c.cash, card: c.card, transfer: c.transfer, hasStored: c.hasStored, storedCash: c.storedCash, storedCard: c.storedCard,
     newCustomers: val('rNew'), oldCustomers: val('rOld'), depositRevenue: c.depositRevenue, depositPetty: c.depositPetty, deposit: c.deposit, countMatch: c.countMatch, counted: c.counted, note: $('rNote').value.trim() };
   Object.assign(draft, checks);
   $('cNotes').innerHTML = noteHtml(c, s);
   $('cMoney').innerHTML = moneyRows(c, s);
   $('cBasic').innerHTML = `
     <div class="sum"><span>日期</span><b>${esc(draft.date)}</b></div>
-    <div class="sum"><span>門店</span><b>${esc(session.store)}</b></div>
+    <div class="sum"><span>門店</span><b>${esc(draft.store)}</b></div>
     <div class="sum"><span>填報人</span><b>${esc(draft.reporter)}</b></div>
     <div class="sum"><span>來客數</span><b>新客 ${fmt(draft.newCustomers)}・舊客 ${fmt(draft.oldCustomers)}・合計 ${fmt(draft.newCustomers + draft.oldCustomers)}</b></div>
     ${session.checks.map(k => `<div class="sum"><span>${esc(k.label)}</span><b class="${draft[k.key + 'Done'] ? '' : 'neg'}">${draft[k.key + 'Done'] ? '✓ 完成' : '未完成：' + esc(draft[k.key + 'Reason'])}</b></div>`).join('')}
@@ -858,7 +862,7 @@ async function submitReport() {
     if (!$('eHandler').value) $('eHandler').value = draft.reporter;
     ctx.r = null; ctx.e = null;
     queried = false;
-    $('dMsg').textContent = `${d.report.date}　${session.store}　${d.updated ? '已更新回報' : '已完成回報'}` + (d.report.late ? '（已超過截止時間 ' + d.settings.deadline + '）' : '');
+    $('dMsg').textContent = `${d.report.date}　${d.report.store}　${d.updated ? '已更新回報' : '已完成回報'}` + (d.report.late ? '（已超過截止時間 ' + d.settings.deadline + '）' : '');
     $('dNotes').innerHTML = noteHtml(d.report, d.settings).replace(/<div class="note green">.*?<\/div>/, '');
     $('dMoney').innerHTML = moneyRows(d.report, d.settings);
     show('v-done');
@@ -882,7 +886,7 @@ async function submitExpense() {
   if (!amount) return toast('請填寫「金額」');
   if (!photos.receipt) return toast('請上傳「收據照片」');
   try {
-    const d = await api('addExpense', { date: $('eDate').value, handler, item, category: $('eCategory').value, amount, photo: photos.receipt }, '上傳中，請稍候…');
+    const d = await api('addExpense', { store: curStore, date: $('eDate').value, handler, item, category: $('eCategory').value, amount, photo: photos.receipt }, '上傳中，請稍候…');
     rememberName(handler); queried = false;
     if (!$('rReporter').value) $('rReporter').value = handler;
     $('eItem').value = ''; $('eAmount').value = ''; $('eCategory').value = '';
@@ -937,6 +941,14 @@ function expenseRowsHtml(list, withMeta) {
 
 // ===== 總部：刪除紀錄 =====
 const isAdmin = () => !!session && session.role === '總部';
+const seesAll = () => !!session && (session.role === '總部' || session.role === '經理'); // 每日總覽、月報、所有門店
+const myStores = () => (session && (session.stores && session.stores.length ? session.stores : session.store ? [session.store] : [])) || [];
+function switchStore(v) {
+  if (!myStores().includes(v) || v === curStore) return;
+  curStore = v; $('rStore').value = v; $('eStore').value = v;
+  ctx = { r: null, e: null }; photos = {}; Object.keys(PHOTOS).forEach(k => renderPhoto(k));
+  loadDay($('v-expense').hidden ? 'r' : 'e');
+}
 let delTargets = [], delCurrent = null;
 function delTarget(t) { delTargets.push(t); return delTargets.length - 1; }
 function askDelete(i) {
@@ -1141,11 +1153,13 @@ let ca = { init: null, seg: 'o', import: null, staff: [] };
 const nameOf = email => { const p = ca.staff.find(x => x.email === email); return p ? p.name || p.email : email || '（未分配）'; };
 async function careAdminOpen() {
   show('v-careAdmin');
+  const hq = isAdmin();
+  $('caSegBar').hidden = !hq; $('caRaCard').hidden = !hq; $('caExCard').hidden = !hq;
+  if (!hq) ca.seg = 'o';
   if (!ca.init) {
-    try { ca.init = await api('careAdminInit', {}, '載入中…'); } catch (e) { toast(e.message); return; }
+    try { ca.init = await api(hq ? 'careAdminInit' : 'careViewInit', {}, '載入中…'); } catch (e) { toast(e.message); return; }
     ca.staff = ca.init.staff;
-    $('caStore').innerHTML = '<option value="">全部</option>' + ca.init.stores.map(x => `<option>${esc(x)}</option>`).join('');
-    $('psStore').innerHTML = '<option value="">（無）</option>' + ca.init.stores.map(x => `<option>${esc(x)}</option>`).join('');
+    $('caStore').innerHTML = `<option value="">${session.role === '店長' ? '我負責的全部門店' : '全部'}</option>` + ca.init.stores.map(x => `<option>${esc(x)}</option>`).join('');
     caStaffOptions();
     caPeriodChange(true);
   }
