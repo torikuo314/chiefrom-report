@@ -114,6 +114,10 @@
   body.ro input:disabled, body.ro select:disabled, body.ro textarea:disabled { color:var(--ink); -webkit-text-fill-color:var(--ink); opacity:1; background:var(--bg); }
   body.ro .seg button:disabled { opacity:1; }
   button.pick { width:100%; font-family:inherit; }
+  .dlgwrap { position:fixed; inset:0; z-index:18; background:rgba(74,59,47,.5); display:flex; align-items:center; justify-content:center; padding:16px; }
+  .dlgwrap .box { background:var(--card); border-radius:16px; padding:18px; width:100%; max-width:420px; }
+  .topbtn { display:block; width:100%; min-height:44px; margin-top:8px; border:1px dashed var(--brand); border-radius:12px; background:transparent; color:var(--brand); font-size:15px; font-weight:600; font-family:inherit; }
+  #qSeg { grid-template-columns:repeat(3, minmax(0, 1fr)); }
   #dlg { position:fixed; inset:0; z-index:18; background:rgba(74,59,47,.5); display:flex; align-items:center; justify-content:center; padding:16px; }
   #dlg .box { background:var(--card); border-radius:16px; padding:18px; width:100%; max-width:420px; }
   #dlg h2 { color:var(--red); }
@@ -236,6 +240,7 @@
     <div class="seg" id="qSeg" hidden>
       <button id="qSegR" onclick="qMode('r')">每日回報</button>
       <button id="qSegE" onclick="qMode('e')">現場零用金<wbr>支出</button>
+      <button id="qSegT" onclick="qMode('t')">零用金<wbr>補入</button>
     </div>
     <div id="qList"></div>
   </section>
@@ -290,6 +295,7 @@
       <h2>現金安排</h2>
       <div class="sum"><span id="rPrevLabel">前次實點現場零用金</span><b id="rPrev">–</b></div>
       <div class="sum"><span>＋ 今日現金收入<small id="rCashNote" style="display:block;font-size:13px"></small></span><b id="rCashEcho">–</b></div>
+      <div class="sum" id="rTopupRow" hidden><span>＋ 總部補入<small id="rTopupNote" style="display:block;font-size:13px"></small></span><b id="rTopup">–</b></div>
       <div class="sum"><span>－ 今日支出合計</span><b id="rExp">–</b></div>
       <div class="sum big"><span>存入前抽屜應有現金</span><b id="rBefore">–</b></div>
 
@@ -475,6 +481,16 @@
   <p class="hint" style="margin:0 0 12px">刪除後畫面上不會再顯示，相關金額會重新計算。原始資料會保留在試算表的「已刪除紀錄」分頁。</p>
   <button class="btn danger" onclick="doDelete()">確定刪除</button>
   <button class="btn ghost" onclick="closeDelete()">取消</button>
+</div></div>
+<div id="tdlg" class="dlgwrap" hidden><div class="box">
+  <h2 style="color:var(--ink)">補入零用金</h2>
+  <p id="tdlgStore" style="margin:0 0 10px;font-weight:600"></p>
+  <label class="f"><b>日期</b><input id="tDate" type="date"></label>
+  <label class="f"><b>補入金額</b><input id="tAmount" class="num" inputmode="numeric" placeholder="例如 200"></label>
+  <label class="f"><b>備註</b>（選填）<input id="tNote" maxlength="100" placeholder="例如：低於基本額補足"></label>
+  <p class="hint" style="margin:0 0 12px">登記後，店長那天的「現金安排」會多一行「＋ 總部補入」。如果那天已經回報，金額與差額會自動重算。</p>
+  <button class="btn" onclick="doTopup()">登記</button>
+  <button class="btn ghost" onclick="$('tdlg').hidden = true">取消</button>
 </div></div>
 <div id="mask" hidden>處理中…</div>
 <div id="toast" hidden onclick="this.hidden=true"></div>
@@ -824,7 +840,8 @@ function calc() {
   const hasStored = $('rStoredY').classList.contains('on');
   const storedCash = hasStored ? val('rStoredCash') || 0 : 0, storedCard = hasStored ? val('rStoredCard') || 0 : 0;
   const cashIn = cash + storedCash;                         // 今日現金收入 = 現金營收 + 儲值金現金
-  const before = d.prevCounted + cashIn - d.expenseTotal;   // 存入前抽屜應有現金
+  const topup = d.topupTotal || 0;                          // 總部補入現場零用金
+  const before = d.prevCounted + cashIn + topup - d.expenseTotal; // 存入前抽屜應有現金
   const expected = before - deposit;
   // 金額相符：實點＝應有；金額不符：店長填實際金額
   const counted = countMatch ? expected : mismatch ? val('rCounted') : null;
@@ -832,7 +849,7 @@ function calc() {
   const sugTotal = before > s.base ? Math.floor((before - s.base) / 1000) * 1000 : 0;
   const sugRevenue = Math.min(cashIn, sugTotal), sugPetty = sugTotal - sugRevenue;
   const over = (counted || 0) - s.base;
-  return { cash, card, transfer, hasStored, storedCash, storedCard, cashIn, depositRevenue, depositPetty, deposit, counted, countMatch, mismatch, total: cash + card + transfer, expected,
+  return { cash, card, transfer, hasStored, storedCash, storedCard, cashIn, topup, depositRevenue, depositPetty, deposit, counted, countMatch, mismatch, total: cash + card + transfer, expected,
     before, sugTotal, sugRevenue, sugPetty,
     diff: counted == null ? null : counted - expected,
     shouldDeposit: over > 0 ? Math.floor(over / 1000) * 1000 : 0,
@@ -847,6 +864,8 @@ function recalc() {
   $('rCustomers').textContent = fmt((val('rNew') || 0) + (val('rOld') || 0));
   $('rPrev').textContent = fmt(ctx.r.prevCounted);
   $('rCashEcho').textContent = fmt(c.cashIn);
+  $('rTopupRow').hidden = !c.topup; $('rTopup').textContent = fmt(c.topup);
+  $('rTopupNote').textContent = (ctx.r.topups || []).map(x => clean(x.note)).filter(String).join('、');
   $('rCashNote').textContent = c.storedCash ? `現金營收 ${fmt(c.cash)}＋儲值金現金 ${fmt(c.storedCash)}` : '';
   $('rExp').textContent = fmt(ctx.r.expenseTotal);
   $('rBefore').textContent = fmt(c.before);
@@ -895,6 +914,7 @@ function moneyRows(c, s) {
     ${c.storedCard ? `<div class="sum"><span>儲值金－刷卡</span><b>${fmt(c.storedCard)}</b></div>` : ''}
     <div class="sum"><span>前次實點現場零用金</span><b>${fmt(c.prevCounted)}</b></div>
     <div class="sum"><span>＋ 今日現金收入${c.storedCash ? `<small style="display:block;font-size:13px">現金營收 ${fmt(c.cash)}＋儲值金現金 ${fmt(c.storedCash)}</small>` : ''}</span><b>${fmt(c.cashIn == null ? c.cash : c.cashIn)}</b></div>
+    ${c.topup ? `<div class="sum"><span>＋ 總部補入</span><b>${fmt(c.topup)}</b></div>` : ''}
     <div class="sum"><span>－ 今日支出合計</span><b>${fmt(c.expenseTotal)}</b></div>
     <div class="sum"><span>－ 今日現金存入</span><b>${fmt(c.depositRevenue)}</b></div>
     <div class="sum"><span>－ 現場零用金超額存入</span><b>${fmt(c.depositPetty)}</b></div>
@@ -1102,21 +1122,45 @@ async function loadOverview() {
   details = {};
   const done = d.rows.filter(x => x.reported);
   $('oSummary').innerHTML = `${md(d.date)}　已回報 <b>${done.length}／${d.rows.length}</b> 間　全店總營收 <b>${fmt(done.reduce((a, x) => a + x.report.total, 0))}</b>　來客 <b>${fmt(done.reduce((a, x) => a + x.report.customers, 0))}</b>　（${d.now.slice(11, 16)} 更新）`;
+  oRows = d.rows; oDate = d.date;
+  const topupHtml = (x, i) => (x.topupTotal ? `<p class="hint">總部補入 ${fmt(x.topupTotal)} 元</p>` : '')
+    + (isAdmin() ? `<button class="topbtn" onclick="askTopup(${i})">＋ 補入零用金</button>` : '');
   $('oList').innerHTML = d.rows.map((x, i) => {
     const r = x.report, dl = x.settings.deadline;
     if (!r) {
       return `<div class="card"><div class="shead"><b>${esc(x.store)}</b><span class="badge ${x.flags.late ? 'bad' : 'wait'}">未回報</span></div>
         ${x.flags.late ? `<div class="flag red">🔴 已過截止時間 ${dl}，尚未回報</div>` : `<p class="hint">尚未回報（截止時間 ${dl}）</p>`}
-        ${x.expenseTotal ? `<p class="hint">當日已登記支出 ${fmt(x.expenseTotal)} 元</p>` : ''}</div>`;
+        ${x.expenseTotal ? `<p class="hint">當日已登記支出 ${fmt(x.expenseTotal)} 元</p>` : ''}${topupHtml(x, i)}</div>`;
     }
     const f = flagsOf(r);
     return `<div class="card"><div class="shead"><b>${esc(x.store)}<small>${esc(clean(r.reporter))}・${r.submittedAt.slice(11, 16)} 送出</small></b>
         <span class="badge ${r.late ? 'bad' : 'ok'}">${r.late ? '逾時回報' : '已回報'}</span></div>
       ${f.length ? flagHtml(f) : '<div class="flag green">✓ 沒有異常</div>'}
-      ${metricsHtml(r)}${detailToggleHtml('o' + i, r)}</div>`;
+      ${metricsHtml(r)}${topupHtml(x, i)}${detailToggleHtml('o' + i, r)}</div>`;
   }).join('') || '<div class="card">「設定」分頁裡沒有啟用中的門店。</div>';
   show('v-overview');
   return true;
+}
+
+// ===== 總部：補入零用金 =====
+let oRows = [], oDate = '', tStore = '';
+function askTopup(i) {
+  tStore = oRows[i].store;
+  $('tdlgStore').textContent = '門店：' + tStore;
+  $('tDate').value = oDate || localToday(); $('tDate').max = localToday();
+  $('tAmount').value = ''; $('tNote').value = '';
+  $('tdlg').hidden = false;
+}
+async function doTopup() {
+  const date = $('tDate').value, amount = val('tAmount'), note = $('tNote').value.trim();
+  if (!date) return toast('請選擇日期');
+  if (!amount) return toast('請填寫補入金額');
+  try {
+    await api('addTopup', { store: tStore, date, amount, note }, '登記中…');
+  } catch (e) { toast(/未知的動作/.test(e.message) ? '後端還是舊版，請先更新 Apps Script 並重新部署' : e.message); return; }
+  $('tdlg').hidden = true;
+  await loadOverview();
+  okToast(`已登記：${tStore} ${md(date)} 補入 ${fmt(amount)} 元`);
 }
 
 // ===== 紀錄查詢 =====
@@ -1131,7 +1175,18 @@ async function runQuery() {
 }
 function qMode(m) {
   qView = m; details = {};
-  $('qSegR').className = m === 'r' ? 'on' : ''; $('qSegE').className = m === 'e' ? 'on' : '';
+  $('qSegR').className = m === 'r' ? 'on' : ''; $('qSegE').className = m === 'e' ? 'on' : ''; $('qSegT').className = m === 't' ? 'on' : '';
+  const tops = qData.topups || [];
+  $('qSegT').innerHTML = `零用金<wbr>補入（${tops.length}）`;
+  if (m === 't') {
+    const sum = tops.reduce((a, x) => a + x.amount, 0);
+    $('qList').innerHTML = tops.length ? `<div class="card">${tops.map(x => `
+      <div class="exp"><div>${md(x.date)}・${esc(x.store)}<small>${esc(clean(x.note)) || '（無備註）'}・${esc(clean(x.by))}${canDelete()
+        ? `・<button class="link" style="padding:0;color:var(--red)" onclick="askDelete(${delTarget({ type: 'topup', store: x.store, date: x.date, id: x.id, label: `${md(x.date)} ${x.store} 的總部補入 ${fmt(x.amount)} 元` })})">刪除</button>` : ''}</small></div><b>${fmt(x.amount)}</b></div>`).join('')}
+      <div class="sum big" style="margin-top:6px"><span>補入合計</span><b>${fmt(sum)}</b></div></div>`
+      : '<div class="card">這段期間沒有總部補入。</div>';
+    return;
+  }
   $('qSegR').textContent = `每日回報（${qData.reports.length}）`; $('qSegE').innerHTML = `現場零用金<wbr>支出（${qData.expenses.length}）`;
   if (m === 'r') {
     $('qList').innerHTML = qData.reports.map((r, i) => {
@@ -1168,6 +1223,7 @@ function monthCardHtml(o, title, sub, checks, cats) {
     ${sub2('新客', fmt(o.newCustomers))}${sub2('舊客', fmt(o.oldCustomers))}${sub2('平均客單價', avg)}
     ${row('存入合計', fmt(o.deposit))}
     ${sub2('今日現金存入', fmt(o.depositRevenue))}${sub2('現場零用金超額存入', fmt(o.depositPetty))}
+    ${row('總部補入合計', fmt(o.topup || 0))}
     ${row('現場零用金支出合計', fmt(o.expenseTotal))}
     ${cats.map(c => sub2(esc(c), fmt(o.expenseByCategory[c] || 0))).join('')}
     ${row('累計差額', signed(o.diff), o.diff ? 'neg' : '')}
@@ -1179,12 +1235,12 @@ async function loadMonthly() {
   try { d = await api('monthly', { month }, '載入中…'); } catch (e) { toast(e.message); return; }
   $('mLabel').textContent = `${+d.month.slice(0, 4)} 年 ${+d.month.slice(5)} 月`;
   // 全店合計
-  const keys = ['days', 'revenue', 'cash', 'card', 'transfer', 'storedCash', 'storedCard', 'newCustomers', 'oldCustomers', 'customers', 'depositRevenue', 'depositPetty', 'deposit', 'expenseTotal', 'diff'];
+  const keys = ['days', 'revenue', 'cash', 'card', 'transfer', 'storedCash', 'storedCard', 'topup', 'newCustomers', 'oldCustomers', 'customers', 'depositRevenue', 'depositPetty', 'deposit', 'expenseTotal', 'diff'];
   const all = { expenseByCategory: {}, incompleteDays: {} };
   keys.forEach(k => all[k] = d.rows.reduce((a, o) => a + (o[k] || 0), 0));
   d.categories.forEach(c => all.expenseByCategory[c] = d.rows.reduce((a, o) => a + (o.expenseByCategory[c] || 0), 0));
   d.checks.forEach(c => all.incompleteDays[c.key] = d.rows.reduce((a, o) => a + o.incompleteDays[c.key], 0));
-  $('mList').innerHTML = all.days || all.expenseTotal
+  $('mList').innerHTML = all.days || all.expenseTotal || all.topup
     ? monthCardHtml(all, '全店合計', `${d.rows.length} 間門店`, d.checks, d.categories)
       + d.rows.map(o => monthCardHtml(o, o.store, `回報 ${o.days} 天`, d.checks, d.categories)).join('')
     : '<div class="card">這個月還沒有任何回報或支出紀錄。</div>';
