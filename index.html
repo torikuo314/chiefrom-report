@@ -914,21 +914,24 @@ function moneyRows(c, s) {
     ${c.storedCard ? `<div class="sum"><span>儲值金－刷卡</span><b>${fmt(c.storedCard)}</b></div>` : ''}
     <div class="sum"><span>前次實點現場零用金</span><b>${fmt(c.prevCounted)}</b></div>
     <div class="sum"><span>＋ 今日現金收入${c.storedCash ? `<small style="display:block;font-size:13px">現金營收 ${fmt(c.cash)}＋儲值金現金 ${fmt(c.storedCash)}</small>` : ''}</span><b>${fmt(c.cashIn == null ? c.cash : c.cashIn)}</b></div>
-    ${c.topup ? `<div class="sum"><span>＋ 總部補入</span><b>${fmt(c.topup)}</b></div>` : ''}
+    ${(c.topupBefore == null ? c.topup : c.topupBefore) ? `<div class="sum"><span>＋ 總部補入</span><b>${fmt(c.topupBefore == null ? c.topup : c.topupBefore)}</b></div>` : ''}
     <div class="sum"><span>－ 今日支出合計</span><b>${fmt(c.expenseTotal)}</b></div>
     <div class="sum"><span>－ 今日現金存入</span><b>${fmt(c.depositRevenue)}</b></div>
     <div class="sum"><span>－ 現場零用金超額存入</span><b>${fmt(c.depositPetty)}</b></div>
     <div class="sum"><span>存入合計（匯一筆）</span><b>${fmt(c.deposit)}</b></div>
     <div class="sum big"><span>應有現場零用金</span><b>${fmt(c.expected)}</b></div>
     <div class="sum big"><span>實點現場零用金（${c.countMatch ? '金額相符' : '金額不符'}）</span><b>${fmt(c.counted)}</b></div>
+    ${c.topupAfter ? `<div class="sum"><span>＋ 收班後總部補入</span><b>${fmt(c.topupAfter)}</b></div>
+    <div class="sum big"><span>當天結餘</span><b>${fmt(c.balance)}</b></div>` : ''}
     <div class="sum big"><span>差額</span><b class="${c.diff !== 0 ? 'neg' : ''}">${signed(c.diff)}</b></div>
     <div class="sum"><span>尚可存入金額${s ? `（基本額 ${fmt(s.base)}）` : ''}</span><b>${fmt(c.shouldDeposit)}</b></div>`;
 }
 function noteHtml(c, s) {
   let h = '';
   if (c.diff !== 0) h += `<div class="note red">差額 ${signed(c.diff)} 元：實點金額${c.diff > 0 ? '多於' : '少於'}應有金額。請再點一次，並確認今日支出都已登記。</div>`;
-  if (c.overThreshold) h += `<div class="note red">現場零用金 ${fmt(c.counted)} 元已超過存款門檻 ${fmt(s.threshold)} 元，還應存入 ${fmt(c.shouldDeposit)} 元。</div>`;
-  if (c.belowBase) h += `<div class="note red">現場零用金 ${fmt(c.counted)} 元低於基本額 ${fmt(s.base)} 元，請通知總部補足 ${fmt(c.shortfall)} 元。</div>`;
+  const bal = c.balance == null ? c.counted : c.balance;
+  if (c.overThreshold) h += `<div class="note red">現場零用金 ${fmt(bal)} 元已超過存款門檻 ${fmt(s.threshold)} 元，還應存入 ${fmt(c.shouldDeposit)} 元。</div>`;
+  if (c.belowBase) h += `<div class="note red">現場零用金 ${fmt(bal)} 元低於基本額 ${fmt(s.base)} 元，請通知總部補足 ${fmt(c.shortfall)} 元。</div>`;
   if (c.diff === 0 && !c.overThreshold && !c.belowBase) h += `<div class="note green">現場零用金相符，沒有差額。</div>`;
   if (c.incomplete && c.incomplete.length) h += `<div class="note yellow">收班檢查有 ${c.incomplete.length} 項未完成：${c.incomplete.map(x => esc(x.label)).join('、')}</div>`;
   return h;
@@ -1022,8 +1025,9 @@ function flagsOf(r) {
   const f = [];
   if (r.late) f.push(['red', `🔴 逾時回報（${r.submittedAt.slice(0, 10) === r.date ? r.submittedAt.slice(11, 16) : md(r.submittedAt.slice(0, 10)) + ' ' + r.submittedAt.slice(11, 16)} 送出）`]);
   if (r.diff !== 0) f.push(['red', `🔴 差額 ${signed(r.diff)} 元（應有 ${fmt(r.expected)}，實點 ${fmt(r.counted)}）`]);
-  if (r.overThreshold) f.push(['red', `🔴 現場零用金 ${fmt(r.counted)} 元超過存款門檻，還應存入 ${fmt(r.shouldDeposit)} 元`]);
-  if (r.belowBase) f.push(['red', `🔴 現場零用金 ${fmt(r.counted)} 元低於基本額，需補足 ${fmt(r.shortfall)} 元`]);
+  const bal = r.balance == null ? r.counted : r.balance; // 結餘含收班後總部補入
+  if (r.overThreshold) f.push(['red', `🔴 現場零用金 ${fmt(bal)} 元超過存款門檻，還應存入 ${fmt(r.shouldDeposit)} 元`]);
+  if (r.belowBase) f.push(['red', `🔴 現場零用金 ${fmt(bal)} 元低於基本額，需補足 ${fmt(r.shortfall)} 元`]);
   (r.incomplete || []).forEach(x => f.push(['yellow', `🟡 未完成：${esc(x.label)}（${esc(clean(x.reason))}）`]));
   if (clean(r.note)) f.push(['yellow', `🟡 異常／客訴／需支援：${esc(clean(r.note))}`]);
   return f;
@@ -1034,7 +1038,7 @@ function metricsHtml(r) {
   return `<div class="grid2">
     <div><span>總營收</span><b>${fmt(r.total)}</b></div>
     <div><span>來客數</span><b>${fmt(r.customers)}</b> <small>新 ${fmt(r.newCustomers)}・舊 ${fmt(r.oldCustomers)}</small></div>
-    <div><span>現場零用金結餘</span><b>${fmt(r.counted)}</b></div>
+    <div><span>現場零用金結餘</span><b>${fmt(r.balance == null ? r.counted : r.balance)}</b></div>
     <div><span>差額</span><b class="${r.diff ? 'neg' : ''}">${signed(r.diff)}</b></div>
     <div><span>今日存入</span><b>${fmt(r.deposit)}</b></div>
     <div><span>收班檢查</span><b class="${n ? 'neg' : ''}">${total - n}／${total}</b> <small>完成</small></div>
@@ -1123,7 +1127,7 @@ async function loadOverview() {
   const done = d.rows.filter(x => x.reported);
   $('oSummary').innerHTML = `${md(d.date)}　已回報 <b>${done.length}／${d.rows.length}</b> 間　全店總營收 <b>${fmt(done.reduce((a, x) => a + x.report.total, 0))}</b>　來客 <b>${fmt(done.reduce((a, x) => a + x.report.customers, 0))}</b>　（${d.now.slice(11, 16)} 更新）`;
   oRows = d.rows; oDate = d.date;
-  const topupHtml = (x, i) => (x.topupTotal ? `<p class="hint">總部補入 ${fmt(x.topupTotal)} 元</p>` : '')
+  const topupHtml = (x, i) => (x.topupTotal ? `<p class="hint">總部補入 ${fmt(x.topupTotal)} 元${x.report && x.report.topupAfter ? `（其中 ${fmt(x.report.topupAfter)} 元在收班後補入，已加進結餘）` : ''}</p>` : '')
     + (isAdmin() ? `<button class="topbtn" onclick="askTopup(${i})">＋ 補入零用金</button>` : '');
   $('oList').innerHTML = d.rows.map((x, i) => {
     const r = x.report, dl = x.settings.deadline;
