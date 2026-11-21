@@ -147,6 +147,17 @@
   .bar i { display:block; height:14px; min-width:2px; background:var(--brand); border-radius:7px; }
   .bar b { text-align:right; font-variant-numeric:tabular-nums; }
   .seg.four { grid-template-columns:repeat(4,minmax(0,1fr)); }
+  .seg.three { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  nav.tabs .in.many button { font-size:14px; }
+  .sthead { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:6px; }
+  .sthead b { font-size:17px; }
+  .sthead small { display:block; color:var(--sub); font-size:13px; font-weight:400; }
+  .stsec { font-size:18px; margin:22px 0 10px; display:flex; justify-content:space-between; align-items:baseline; }
+  .stsec small { font-size:14px; color:var(--sub); font-weight:400; }
+  .fix { background:var(--green-bg); color:var(--green); border-radius:10px; padding:8px 12px; margin:6px 0; font-size:15px; }
+  .mkbtn { display:block; width:100%; min-height:44px; margin-top:10px; border:1px solid var(--brand); border-radius:12px; background:#fff; color:var(--brand); font-size:15px; font-weight:600; font-family:inherit; }
+  .lnrow { display:flex; justify-content:space-between; gap:10px; padding:4px 0 4px 12px; font-size:15px; border-left:3px solid var(--line); margin:4px 0; }
+  .lnrow b { font-variant-numeric:tabular-nums; white-space:nowrap; font-weight:600; }
   .seg.four button { font-size:15px; }
   .inline { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; align-items:end; }
   .inline .btn { width:auto; min-height:52px; padding:0 16px; font-size:16px; }
@@ -217,6 +228,34 @@
       </div>
     </div>
     <div id="mList"></div>
+  </section>
+
+  <!-- 總部、經理：月結（上傳神美訂單列表、對帳）；業績報表只有總部 -->
+  <section id="v-settle" hidden>
+    <h1>月結</h1>
+    <div class="seg three" id="stSegBar">
+      <button id="stSegU" onclick="stSeg('u')">上傳資料</button>
+      <button id="stSegR" onclick="stSeg('r')">對帳</button>
+      <button id="stSegP" onclick="stSeg('p')">業績報表</button>
+    </div>
+    <div id="stU">
+      <div class="card">
+        <h2>上傳神美「訂單列表」</h2>
+        <p class="hint" style="margin:-4px 0 12px">可以一次選好幾個檔案。檔案只在這台裝置上讀取：不讀客人姓名，手機會先轉成無法還原的「客人代碼」才送出。重新上傳同一個月，會整個取代那個月的舊資料。上傳時也會一起更新沉睡顧客關懷名單。</p>
+        <label class="photo"><input type="file" id="stFile" accept=".xlsx,.xls" multiple onchange="stPick(this)"><span class="pick">選擇神美「訂單列表」.xlsx</span></label>
+        <div id="stPreview"></div>
+      </div>
+      <div id="stDone"></div>
+      <div class="card" id="stUploaded"></div>
+    </div>
+    <div id="stR" hidden>
+      <div class="card"><label class="f"><b>月份</b><select id="stMonthR" onchange="stMonth(this.value)"></select></label></div>
+      <div id="stResult"></div>
+    </div>
+    <div id="stP" hidden>
+      <div class="card"><label class="f"><b>月份</b><select id="stMonthP" onchange="stMonth(this.value)"></select></label></div>
+      <div id="stPerf"></div>
+    </div>
   </section>
 
   <!-- 總部：選門店看店長畫面（唯讀） -->
@@ -385,9 +424,8 @@
   <!-- 總部：關懷總覽／匯入／人員／設定 -->
   <section id="v-careAdmin" hidden>
     <h1>關懷管理</h1>
-    <div class="seg four" id="caSegBar">
+    <div class="seg three" id="caSegBar">
       <button id="caSegO" onclick="caSeg('o')">總覽</button>
-      <button id="caSegI" onclick="caSeg('i')">匯入神美</button>
       <button id="caSegP" onclick="caSeg('p')">人員</button>
       <button id="caSegS" onclick="caSeg('s')">設定</button>
     </div>
@@ -424,16 +462,6 @@
           <button class="btn danger" onclick="caRemoveDnd()">移除</button>
         </div>
       </div>
-    </div>
-
-    <div id="caI" hidden>
-      <div class="card">
-        <h2>匯入神美訂單列表</h2>
-        <p class="hint" style="margin:-4px 0 12px">檔案只在這台裝置上讀取，只把關懷需要的「每位客人摘要」送到後端，檔案本身不會上傳，也不會存在這台裝置。</p>
-        <label class="photo" id="caIPick"><input type="file" id="caFile" accept=".xlsx,.xls" onchange="caPick(this)"><span class="pick">選擇神美「訂單列表」.xlsx</span></label>
-        <div id="caIPreview"></div>
-      </div>
-      <div id="caIResult"></div>
     </div>
 
     <div id="caP" hidden>
@@ -492,6 +520,14 @@
   <button class="btn" onclick="doTopup()">登記</button>
   <button class="btn ghost" onclick="$('tdlg').hidden = true">取消</button>
 </div></div>
+<div id="mdlg" class="dlgwrap" hidden><div class="box">
+  <h2 style="color:var(--ink)">標記「已確認無誤」</h2>
+  <p id="mdlgText" style="margin:0 0 10px"></p>
+  <label class="f"><b>原因</b><input id="mReason" maxlength="200" placeholder="例如：特殊情況，已和養護師確認業績分配"></label>
+  <p class="hint" style="margin:0 0 12px">標記後這筆不再算未處理的錯誤，系統會記下是誰、什麼時候標記的。之後可以取消標記。</p>
+  <button class="btn" onclick="stDoMark()">確認標記</button>
+  <button class="btn ghost" onclick="$('mdlg').hidden = true">取消</button>
+</div></div>
 <div id="mask" hidden>處理中…</div>
 <div id="toast" hidden onclick="this.hidden=true"></div>
 
@@ -503,16 +539,16 @@ const GOOGLE_CLIENT_ID = '666667317547-qt7hdpi8du19tq2fb2genfvhkcs7hu5j.apps.goo
 
 const $ = id => document.getElementById(id);
 const LS = { api: 'chiefrom_api', session: 'chiefrom_session', name: 'chiefrom_name', names: 'chiefrom_names' };
-const VIEWS = ['v-setup', 'v-login', 'v-pick', 'v-overview', 'v-monthly', 'v-records', 'v-report', 'v-confirm', 'v-done', 'v-expense', 'v-care', 'v-careAdmin'];
+const VIEWS = ['v-setup', 'v-login', 'v-pick', 'v-settle', 'v-overview', 'v-monthly', 'v-records', 'v-report', 'v-confirm', 'v-done', 'v-expense', 'v-care', 'v-careAdmin'];
 const ROLES = ['總部', '經理', '店長', '客服', '養護師'];
 const TABS = {
   store: [['r', '每日回報'], ['e', '零用金<wbr>支出'], ['q', '紀錄'], ['c', '關懷']],
-  admin: [['o', '每日總覽'], ['q', '紀錄'], ['m', '月報'], ['c', '關懷']],
+  admin: [['o', '每日總覽'], ['q', '紀錄'], ['m', '月報'], ['t', '月結'], ['c', '關懷']],
   staff: [['r', '每日回報'], ['e', '零用金<wbr>支出'], ['k', '關懷']], // 養護師：收班填報＋自己的關懷名單
-  hq: [['o', '每日總覽'], ['q', '紀錄'], ['m', '月報'], ['c', '關懷'], ['s', '門店<wbr>畫面']], // 總部（經理沒有門店畫面）
+  hq: [['o', '每日總覽'], ['q', '紀錄'], ['m', '月報'], ['t', '月結'], ['c', '關懷'], ['s', '門店<wbr>畫面']], // 總部（經理沒有門店畫面）
   view: [['r', '每日回報'], ['e', '零用金<wbr>支出'], ['q', '紀錄']], // 總部唯讀檢視某間店
 };
-const VIEW_TAB = { 'v-report': 'r', 'v-confirm': 'r', 'v-done': 'r', 'v-expense': 'e', 'v-records': 'q', 'v-overview': 'o', 'v-monthly': 'm', 'v-careAdmin': 'c', 'v-care': 'k', 'v-pick': 's' };
+const VIEW_TAB = { 'v-report': 'r', 'v-confirm': 'r', 'v-done': 'r', 'v-expense': 'e', 'v-records': 'q', 'v-overview': 'o', 'v-monthly': 'm', 'v-careAdmin': 'c', 'v-care': 'k', 'v-pick': 's', 'v-settle': 't' };
 const PHOTOS = {
   deposit: { box: 'depositPhotoBox', label: '匯款證明' },
   receipt: { box: 'receiptPhotoBox', label: '收據照片' },
@@ -549,6 +585,7 @@ function show(id) {
   $('viewBar').hidden = !viewStore;
   const cur = VIEW_TAB[id], tabs = !session ? null : viewStore ? TABS.view : isAdmin() ? TABS.hq : seesAll() ? TABS.admin : session.role === '店長' ? TABS.store : staffFills() ? TABS.staff : null;
   $('tabs').hidden = !(tabs && cur);
+  if (tabs) $('tabsIn').classList.toggle('many', tabs.length > 5);
   if (tabs && cur) $('tabsIn').innerHTML = tabs.map(([k, label]) =>
     `<button class="${k === cur ? 'on' : ''}" onclick="tab('${k}')">${label}</button>`).join('');
   $('who').hidden = !session;
@@ -617,7 +654,7 @@ async function onGoogleLogin(resp) {
   } catch (e) { session = null; toast(e.message); }
 }
 function logout() {
-  viewStore = null; applyReadonly();
+  viewStore = null; applyReadonly(); st = { seg: 'u', init: null, month: '', parsed: null };
   const token = session && session.token;
   if (token && apiUrl()) fetch(apiUrl(), { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'logout', token }) }).catch(() => {});
   if (window.google && google.accounts && google.accounts.id) google.accounts.id.disableAutoSelect();
@@ -735,6 +772,7 @@ function pickName(input, i) { $(input).value = savedNames()[i] || ''; renderName
 function toggleReason(key) { $('why-' + key).hidden = $('chk-' + key).checked; }
 function tab(k) {
   if (k === 's') showPicker();
+  else if (k === 't') settleOpen();
   else if (k === 'c') careAdminOpen();
   else if (k === 'k') careStart();
   else if (k === 'o') loadOverview();
@@ -1146,6 +1184,231 @@ async function loadOverview() {
   return true;
 }
 
+// ===== 月結：上傳神美訂單列表、對帳、業績報表 =====
+let st = { seg: 'u', init: null, month: '', parsed: null };
+async function settleOpen() {
+  show('v-settle');
+  $('stSegP').hidden = !isAdmin(); // 業績報表只有總部
+  $('stSegBar').classList.toggle('three', isAdmin());
+  if (!isAdmin() && st.seg === 'p') st.seg = 'u';
+  if (!(await stInit())) return;
+  stSeg(st.seg);
+}
+async function stInit(force) {
+  if (st.init && !force) return true;
+  try { st.init = await api('settleInit', {}, '載入中…'); } catch (e) { toast(/未知的動作/.test(e.message) ? '後端還是舊版，請先更新 Apps Script 並重新部署' : e.message); return false; }
+  const ms = st.init.months;
+  if (!ms.some(m => m.month === st.month)) st.month = ms.length ? ms[0].month : '';
+  const opts = ms.length ? ms.map(m => `<option value="${m.month}">${ymLabel(m.month)}</option>`).join('') : '<option value="">尚未上傳任何月份</option>';
+  ['stMonthR', 'stMonthP'].forEach(id => { $(id).innerHTML = opts; $(id).value = st.month; });
+  return true;
+}
+function stSeg(k) {
+  st.seg = k;
+  ['u', 'r', 'p'].forEach(x => { $('stSeg' + x.toUpperCase()).className = x === k ? 'on' : ''; $('st' + x.toUpperCase()).hidden = x !== k; });
+  if (k === 'u') stRenderUploaded();
+  if (k === 'r') stLoadResult();
+  if (k === 'p') stLoadPerf();
+}
+function stMonth(m) { st.month = m; $('stMonthR').value = m; $('stMonthP').value = m; if (st.seg === 'r') stLoadResult(); else stLoadPerf(); }
+const ymLabel = m => `${+m.slice(0, 4)} 年 ${+m.slice(5)} 月`;
+function stRenderUploaded() {
+  const ms = st.init.months;
+  $('stUploaded').innerHTML = `<h2>已上傳的月份</h2>` + (ms.length ? ms.map(m => `<div class="sum"><span>${ymLabel(m.month)}<small style="display:block;font-size:13px">${esc(m.batch.slice(0, 16))} 上傳・${esc(m.batch.slice(20))}</small></span><b>${fmt(m.rows)} 列</b></div>`).join('')
+    : '<p class="hint">還沒有上傳過。</p>');
+}
+
+// ----- 上傳 -----
+/** 把第二個以後的檔案，依欄位名稱對齊第一個檔案的欄位順序 */
+function stAlign(header, rows) {
+  const hi = rows.findIndex(r => r.some(c => String(c).trim() === '訂單號碼') && r.some(c => String(c).trim() === '業績'));
+  if (hi < 0) return [];
+  const h2 = rows[hi].map(c => String(c).trim()), idx = header.map(h => h2.indexOf(String(h).trim()));
+  return rows.slice(hi + 1).map(r => idx.map(i => (i >= 0 ? r[i] : '')));
+}
+async function stPick(input) {
+  const files = [...input.files];
+  input.value = ''; st.parsed = null; $('stPreview').innerHTML = ''; $('stDone').innerHTML = '';
+  if (!files.length) return;
+  busy(true, '讀取檔案中…');
+  let rows = null, header = null;
+  try {
+    await loadSheetJS();
+    for (const file of files) {
+      const wb = XLSX.read(await file.arrayBuffer(), { type: 'array', cellDates: true });
+      let found = null;
+      for (const n of wb.SheetNames) {
+        const r = XLSX.utils.sheet_to_json(wb.Sheets[n], { header: 1, raw: true, defval: '' });
+        if (r.some(x => x.includes('訂單號碼') && x.includes('業績'))) { found = r; break; }
+      }
+      if (!found) throw new Error(`「${file.name}」不是神美「訂單列表」：找不到「訂單號碼」「業績」欄位`);
+      if (!rows) { rows = found; header = found[found.findIndex(x => x.includes('訂單號碼') && x.includes('業績'))]; }
+      else rows = rows.concat(stAlign(header, found));
+    }
+    const orders = extractOrderLines(rows);
+    let care = null, careErr = '';
+    try { care = summarizeShenmei(rows, st.init.storeMap, localToday()); } catch (e) { careErr = e.message; }
+    st.parsed = { orders, care, careErr };
+  } catch (e) { busy(false); toast(e.message); return; }
+  busy(false);
+  const o = st.parsed.orders, old = st.init.months.map(m => m.month);
+  if (!o.lines.length) { st.parsed = null; return toast('檔案裡沒有日期正確的訂單'); }
+  const byStore = {};
+  o.lines.forEach(l => { if (l.lineNo === 1) byStore[l.store] = (byStore[l.store] || 0) + 1; });
+  const storeRows = Object.entries(byStore).map(([raw, n]) => {
+    const name = st.init.storeMap[raw], tag = /夥伴店/.test(raw) ? '（夥伴店，對帳時排除）' : name ? `→ ${esc(name)}` : '（沒有設定對應，對帳時排除）';
+    return `<div class="sub2"><span>${esc(raw || '（空白）')} ${tag}</span><b>${fmt(n)} 筆訂單</b></div>`;
+  }).join('');
+  $('stPreview').innerHTML = `
+    <h3 style="margin:14px 0 4px">檔案內容</h3>
+    ${o.months.map(m => `<div class="sum"><span>${ymLabel(m.month)}${old.includes(m.month) ? '<small style="display:block;font-size:13px;color:var(--red)">已上傳過，會取代舊資料</small>' : ''}</span><b>${fmt(m.rows)} 列</b></div>`).join('')}
+    ${storeRows}
+    ${o.duplicates ? `<p class="hint">檔案期間有重疊，重複的 ${fmt(o.duplicates)} 筆訂單只算一次。</p>` : ''}
+    ${st.parsed.care ? `<p class="hint">關懷名單：會用這次的資料更新（${fmt(st.parsed.care.customers.length)} 位客人）。</p>` : `<div class="flag yellow">🟡 這次不會更新關懷名單：${esc(st.parsed.careErr)}</div>`}
+    <button class="btn" style="margin-top:12px" onclick="stUpload()">確認上傳</button>`;
+}
+async function stHash(salt, phones) { // 手機 → 客人代碼（SHA-256，前 32 碼）；手機只在這台裝置的記憶體裡
+  const out = {}, enc = new TextEncoder();
+  for (const p of phones) {
+    const buf = await crypto.subtle.digest('SHA-256', enc.encode(salt + p));
+    out[p] = [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 32);
+  }
+  return out;
+}
+async function stUpload() {
+  const P = st.parsed;
+  if (!P) return;
+  busy(true, '準備資料中…');
+  let codes;
+  try { codes = await stHash(st.init.salt, [...new Set(P.orders.lines.map(l => l.phone).filter(Boolean))]); }
+  catch (e) { busy(false); toast('無法產生客人代碼，請改用 Chrome 或 Safari 最新版'); return; }
+  busy(false);
+  const lines = P.orders.lines.map(l => { const o = Object.assign({}, l, { customer: l.phone ? codes[l.phone] : '' }); delete o.phone; return o; });
+  let up;
+  try { up = await api('settleUpload', { lines }, '上傳訂單明細中，請稍候…'); }
+  catch (e) { toast(/未知的動作/.test(e.message) ? '後端還是舊版，請先更新 Apps Script 並重新部署' : e.message); return; }
+  let careHtml = '';
+  if (P.care) {
+    try {
+      const s = P.care.stats;
+      const d = await api('careImport', { customers: P.care.customers, stats: { invalidPhones: s.invalidPhones, partnerRows: s.partnerRows, unmappedStores: s.unmappedStores } }, '更新關懷名單中…');
+      careHtml = `<h3 style="margin:14px 0 4px">關懷名單</h3>
+        <div class="sum"><span>新增沉睡客人</span><b>${fmt(d.added['非儲值'] + d.added['儲值'])}</b></div>
+        <div class="sub2"><span>非儲值</span><b>${fmt(d.added['非儲值'])}</b></div><div class="sub2"><span>儲值</span><b>${fmt(d.added['儲值'])}</b></div>
+        <div class="sum"><span>喚回成功</span><b>${fmt(d.recovered)}</b></div>
+        <div class="sum"><span>已自行回店</span><b>${fmt(d.selfReturned)}</b></div>
+        ${d.needManual.length ? `<div class="flag yellow">🟡 ${d.needManual.length} 位客人需要手動分配負責人，請總部到「關懷 → 總覽」處理。</div>` : ''}`;
+    } catch (e) { careHtml = `<div class="flag yellow">🟡 訂單已上傳，但關懷名單沒有更新：${esc(e.message)}</div>`; }
+  }
+  st.parsed = null; $('stPreview').innerHTML = ''; // 手機資料不留在畫面或記憶體
+  const last = up.months[up.months.length - 1].month;
+  await stInit(true);
+  st.month = last; ['stMonthR', 'stMonthP'].forEach(id => $(id).value = last);
+  $('stDone').innerHTML = `<div class="card"><h2>上傳完成</h2>
+    ${up.months.map(m => `<div class="sum"><span>${ymLabel(m.month)}</span><b>${fmt(m.rows)} 列</b></div>`).join('')}
+    ${careHtml}
+    <button class="btn" style="margin-top:12px" onclick="stSeg('r')">看對帳結果</button></div>`;
+  stRenderUploaded();
+}
+
+// ----- 對帳結果 -----
+async function stLoadResult() {
+  if (!st.month) { $('stResult').innerHTML = '<div class="card">還沒有上傳任何月份，請先到「上傳資料」。</div>'; return; }
+  try { st.result = await api('settleResult', { month: st.month }, '對帳中…'); } catch (e) { toast(e.message); return; }
+  stRenderResult();
+}
+function stRenderResult() {
+  const d = st.result, sec = (title, n, extra) => `<div class="stsec"><span>${title}</span><small>${n}${extra || ''}</small></div>`;
+  const head = (store, date, extra) => `<b>${md(date)}　${esc(store)}${extra ? `<small>${extra}</small>` : ''}</b>`;
+  let h = `<div class="card"><h2>${ymLabel(d.month)}　共 ${fmt(d.orderCount)} 筆訂單</h2>
+    ${Object.entries(d.summary).map(([k, v]) => `<div class="sum"><span>${esc(k)}</span><b style="font-size:15px">業績錯誤 ${v.perf}${v.perf ? `（未處理 ${v.perfOpen}）` : ''}・現金 ${v.cash}・提醒 ${v.reminders}</b></div>`).join('')}
+    ${d.perfOpen ? `<div class="flag red">🔴 還有 ${d.perfOpen} 筆業績錯誤未處理${isAdmin() ? '，處理完才會顯示業績報表' : ''}</div>` : `<div class="flag green">✓ 業績錯誤都已處理</div>`}
+    ${d.notCompared.length ? `<p class="hint">${d.notCompared.map(esc).join('、')}還沒有設定「神美店家對應」，沒有比對。請總部到「關懷 → 設定」加入。</p>` : ''}
+    </div>`;
+  // A. 內部一致性（理論上不會發生）
+  if (d.internal.length) h += sec('資料內部不一致', d.internal.length + ' 筆') + `<div class="card">${d.internal.map(x => `<div class="flag red">🔴 ${md(x.date)} ${esc(x.store)} 訂單 ${esc(x.orderNo)}：${esc(x.text)}</div>`).join('')}<p class="hint">這通常代表神美匯出的資料有異常，請重新匯出再上傳。</p></div>`;
+  // B. 業績錯誤
+  h += sec('業績錯誤', d.perf.length ? `${d.perf.length} 筆` : '沒有', d.perf.length ? `・未處理 ${d.perfOpen}` : '');
+  h += d.perf.map((x, i) => `<div class="card"><div class="sthead">${head(x.store, x.date, '訂單 ' + esc(x.orderNo))}
+      <span class="badge ${x.marked ? 'ok' : 'bad'}">${x.marked ? '已確認無誤' : '未處理'}</span></div>
+    <div class="sub2"><span>實收 ${fmt(x.paid)}${x.coupon ? ` － 優惠券 ${fmt(x.coupon)}` : ''}</span><b>應有業績 ${fmt(x.should)}</b></div>
+    <div class="sub2"><span>目前業績合計</span><b class="neg">${fmt(x.sum)}</b></div>
+    ${x.lines.map(l => `<div class="lnrow"><span>${esc(l.item || '（無品項）')}・${esc(l.staff || '未填')}${l.role === '助理' ? '（助理）' : ''}</span><b>${fmt(l.amount)}${l.assist ? `<small style="font-weight:400;color:var(--sub)">・協助 ${fmt(l.assist)}</small>` : ''}</b></div>`).join('')}
+    ${x.issues.map(t => `<div class="flag red">🔴 ${esc(t)}</div>`).join('')}
+    ${x.fixes.map(t => `<div class="fix">建議：${esc(t)}</div>`).join('')}
+    ${x.marked ? `<p class="hint">已確認無誤：${esc(x.marked.reason)}（${esc(x.marked.by)}・${esc(x.marked.at.slice(5, 16))}）</p><button class="link" style="padding:0" onclick="stUnmark(${i})">取消標記</button>`
+      : `<p class="hint">請到神美修改後重新匯出、重新上傳；確定沒有錯的特殊情況，再標記已確認無誤。</p><button class="mkbtn" onclick="stAskMark(${i})">標記「已確認無誤」</button>`}
+    </div>`).join('') || '<div class="card"><p class="hint">這個月沒有業績錯誤。</p></div>';
+  // C. 現金對帳
+  h += sec('現金對帳', d.cash.length ? `${d.cash.length} 天有差額` : '每天都相符');
+  h += d.cash.map(x => `<div class="card"><div class="sthead">${head(x.store, x.date)}<span class="badge bad">差 ${signed(x.diff)}</span></div>
+    <div class="sub2"><span>神美現金</span><b>${fmt(x.shenmei)}</b></div>
+    <div class="sub2"><span>每日回報現金</span><b>${fmt(x.report)}</b></div>
+    <div class="flag yellow">${esc(x.hint)}</div>
+    ${x.candidates && x.candidates.length ? x.candidates.map(c => `<div class="lnrow"><span>訂單 ${esc(c.orderNo)}・${esc(c.time)}</span><b>現金 ${fmt(c.cash)}</b></div>`).join('') : ''}</div>`).join('');
+  if (d.missingReport.length || d.missingOrders.length) {
+    h += sec('沒對上的日子', (d.missingReport.length + d.missingOrders.length) + ' 天') + `<div class="card">
+      ${d.missingReport.map(x => `<div class="sub2"><span>${md(x.date)} ${esc(x.store)}：神美有 ${x.orders} 筆訂單，但沒有每日回報</span><b>現金 ${fmt(x.shenmeiCash)}</b></div>`).join('')}
+      ${d.missingOrders.map(x => `<div class="sub2"><span>${md(x.date)} ${esc(x.store)}：有每日回報，但神美沒有訂單</span><b>回報現金 ${fmt(x.cash)}</b></div>`).join('')}</div>`;
+  }
+  // E. 刷卡參考
+  h += sec('刷卡參考', d.card.length ? `${d.card.length} 天不同` : '每天都相符', '（僅供參考）');
+  if (d.card.length) h += `<div class="card"><p class="hint" style="margin-top:0">神美信用卡${st.init.applePayCard ? '＋Apple Pay' : ''}，對照每日回報的刷卡＋儲值金刷卡。</p>${d.card.map(x => `<div class="sub2"><span>${md(x.date)} ${esc(x.store)}：神美 ${fmt(x.shenmei)}、回報 ${fmt(x.report)}</span><b>${signed(x.diff)}</b></div>`).join('')}</div>`;
+  // F. 提醒
+  const rem = d.zeroPaid.length + d.gaps.length + d.unknownTypes.length;
+  h += sec('提醒', rem ? rem + ' 項' : '沒有') + `<div class="card">
+    ${d.zeroPaid.map(x => `<div class="flag yellow">🟡 ${md(x.date)} ${esc(x.store)} 訂單 ${esc(x.orderNo)} 實收 0，請確認是不是招待</div>`).join('')}
+    ${d.gaps.map(x => `<div class="flag yellow">🟡 ${md(x.date)} ${esc(x.store)} 缺 ${x.missing.join('、')} 號訂單（可能是儲值單或作廢單）</div>`).join('')}
+    ${d.unknownTypes.map(x => `<div class="flag yellow">🟡 不認得的${esc(x.kind)}「${esc(x.type)}」${x.count} 筆，例如 ${x.examples.map(esc).join('、')}。這筆沒有算進現金或刷卡，請告訴開發者要怎麼歸類</div>`).join('')}
+    ${d.partner.length ? `<p class="hint">已排除：夥伴店 ${d.partner.length} 筆（${d.partner.map(x => `${md(x.date)} ${fmt(x.paid)} 元`).join('、')}）</p>` : ''}
+    ${d.unmapped.length ? `<p class="hint">已排除：沒有設定對應的店家 ${d.unmapped.map(x => `${esc(x.name)} ${x.orders} 筆`).join('、')}</p>` : ''}
+    <p class="hint">儲值金對帳：尚未上傳儲值紀錄。</p></div>`;
+  $('stResult').innerHTML = h;
+}
+let stMarkIdx = -1;
+function stAskMark(i) {
+  stMarkIdx = i; const x = st.result.perf[i];
+  $('mdlgText').textContent = `${md(x.date)} ${x.store} 訂單 ${x.orderNo}`;
+  $('mReason').value = ''; $('mdlg').hidden = false;
+}
+async function stDoMark() {
+  const x = st.result.perf[stMarkIdx], reason = $('mReason').value.trim();
+  if (!reason) return toast('請填寫原因');
+  try { await api('settleMark', { month: st.result.month, store: x.store, orderNo: x.orderNo, reason }, '標記中…'); } catch (e) { toast(e.message); return; }
+  $('mdlg').hidden = true;
+  await stLoadResult();
+  okToast('已標記：訂單 ' + x.orderNo);
+}
+async function stUnmark(i) {
+  const x = st.result.perf[i];
+  try { await api('settleMark', { month: st.result.month, store: x.store, orderNo: x.orderNo, undo: true }, '處理中…'); } catch (e) { toast(e.message); return; }
+  await stLoadResult();
+  okToast('已取消標記：訂單 ' + x.orderNo);
+}
+
+// ----- 業績報表（只有總部） -----
+async function stLoadPerf() {
+  if (!st.month) { $('stPerf').innerHTML = '<div class="card">還沒有上傳任何月份，請先到「上傳資料」。</div>'; return; }
+  let d;
+  try { d = await api('perfReport', { month: st.month }, '計算中…'); } catch (e) { toast(e.message); return; }
+  if (d.empty) { $('stPerf').innerHTML = '<div class="card">這個月沒有訂單資料。</div>'; return; }
+  if (d.blocked) {
+    $('stPerf').innerHTML = `<div class="card"><div class="flag red">🔴 ${ymLabel(d.month)}還有 ${d.open} 筆業績錯誤未處理</div>
+      <p class="hint">請經理在「對帳」把業績錯誤改好或標記已確認無誤，處理完才會顯示業績報表。</p>
+      <button class="btn ghost" onclick="stSeg('r')">看對帳結果</button></div>`;
+    return;
+  }
+  const sub = (k, v) => `<div class="sub2"><span>${k}</span><b>${v}</b></div>`;
+  $('stPerf').innerHTML = `<div class="card"><h2>${ymLabel(d.month)}　各店合計</h2>
+    ${d.stores.map(x => `<div class="sum big"><span>${esc(x.store)}</span><b>${fmt(x.sales)}</b></div>${sub('服務業績', fmt(x.service))}${sub('商品業績', fmt(x.product))}${sub('訂單數', fmt(x.orders))}`).join('')}
+    <p class="hint">數字可以對照神美「員工業績統計」。${d.partnerOrders ? `夥伴店 ${d.partnerOrders} 筆不算在內。` : ''}</p></div>
+    ${d.staff.map(p => `<div class="card"><div class="sthead"><b>${esc(p.name)}</b><span class="badge wait">業績 ${fmt(p.sales)}</span></div>
+      ${sub('服務業績', fmt(p.service))}${sub('商品業績', fmt(p.product))}
+      ${sub('擔任主做', fmt(p.designer))}${sub('擔任助理', fmt(p.assistant))}
+      ${Object.keys(p.byStore).length > 1 ? Object.entries(p.byStore).map(([k, v]) => sub('　' + esc(k), fmt(v))).join('') : sub('門店', Object.keys(p.byStore).map(esc).join(''))}
+      ${sub('筆數（主做）', fmt(p.orders))}${sub('客數', fmt(p.customers))}${sub('客單價', p.avgTicket == null ? '–' : fmt(p.avgTicket))}</div>`).join('')}`;
+}
+
 // ===== 總部：補入零用金 =====
 let oRows = [], oDate = '', tStore = '';
 function askTopup(i) {
@@ -1253,7 +1516,7 @@ async function loadMonthly() {
 
 // ===== 沉睡顧客關懷：客服、養護師（一次只有一位，客人資料只放在記憶體，不寫入 localStorage／console／網址） =====
 let care = { cur: null };
-function careClear() { care = { cur: null }; $('cvBody').innerHTML = ''; $('cvProgress').textContent = ''; ca.import = null; $('caIPreview').innerHTML = ''; $('caIResult').innerHTML = ''; }
+function careClear() { care = { cur: null }; $('cvBody').innerHTML = ''; $('cvProgress').textContent = ''; }
 const okToast = msg => { toast(msg); $('toast').style.background = 'var(--green)'; setTimeout(() => $('toast').style.background = '', 6100); };
 async function careStart() { show('v-care'); await careLoad(); }
 async function careLoad() {
@@ -1334,7 +1597,7 @@ function caStaffOptions() {
 }
 function caSeg(k) {
   ca.seg = k;
-  ['o', 'i', 'p', 's'].forEach(x => { $('caSeg' + x.toUpperCase()).className = x === k ? 'on' : ''; $('ca' + x.toUpperCase()).hidden = x !== k; });
+  ['o', 'p', 's'].forEach(x => { $('caSeg' + x.toUpperCase()).className = x === k ? 'on' : ''; $('ca' + x.toUpperCase()).hidden = x !== k; });
   if (k === 'o') caOverview();
   if (k === 'p') caStaffRender();
   if (k === 's') caSettingsRender();
@@ -1399,7 +1662,7 @@ async function caRemoveDnd() {
   catch (e) { toast(e.message); }
 }
 
-// ----- 匯入神美 -----
+// ----- Excel 讀取元件（月結上傳使用） -----
 function loadSheetJS() {
   if (window.XLSX) return Promise.resolve();
   return new Promise((ok, fail) => {
@@ -1409,57 +1672,6 @@ function loadSheetJS() {
     document.head.appendChild(s);
   });
 }
-async function caPick(input) {
-  const file = input.files[0];
-  input.value = ''; ca.import = null; $('caIResult').innerHTML = '';
-  if (!file) return;
-  busy(true, '讀取檔案中…');
-  try {
-    await loadSheetJS();
-    const wb = XLSX.read(await file.arrayBuffer(), { type: 'array', cellDates: true });
-    let rows = null;
-    for (const n of wb.SheetNames) {
-      const r = XLSX.utils.sheet_to_json(wb.Sheets[n], { header: 1, raw: true, defval: '' });
-      if (r.some(x => x.includes('手機') && x.includes('訂單號碼'))) { rows = r; break; }
-    }
-    if (!rows) throw new Error('這不是神美「訂單列表」：找不到「訂單號碼」「手機」欄位');
-    ca.import = summarizeShenmei(rows, ca.init.settings.storeMap, localToday());
-  } catch (e) { busy(false); $('caIPreview').innerHTML = ''; toast(e.message); return; }
-  busy(false);
-  const s = ca.import.stats, list = ca.import.customers, cut = addDays(localToday(), -ca.init.settings.dormantDays);
-  const est = list.filter(c => c.lastDye && c.lastDye < cut && !(c.lastService > c.lastDye)).length;
-  $('caIPreview').innerHTML = `
-    <div class="sum"><span>訂單列數／訂單數</span><b>${fmt(s.rows)}／${fmt(s.orders)}</b></div>
-    <div class="sum"><span>客人數（有效手機）</span><b>${fmt(list.length)}</b></div>
-    <div class="sum"><span>其中儲值客</span><b>${fmt(list.filter(c => c.stored).length)}</b></div>
-    <div class="sum"><span>預估沉睡（尚未扣除勿擾、已在名單）</span><b>${fmt(est)}</b></div>
-    <div class="sum"><span>無效手機</span><b>${fmt(s.invalidPhones)}</b></div>
-    <div class="sum"><span>夥伴店（已排除）</span><b>${fmt(s.partnerRows)} 列</b></div>
-    ${s.unmappedStores.length ? `<div class="flag yellow">🟡 對應不到的店家（已略過，可到「設定」加入對應）：${s.unmappedStores.map(esc).join('、')}</div>` : ''}
-    <button class="btn" style="margin-top:12px" onclick="caImport()">確認匯入</button>`;
-}
-async function caImport() {
-  if (!ca.import) return;
-  const s = ca.import.stats;
-  let d;
-  try { d = await api('careImport', { customers: ca.import.customers, stats: { invalidPhones: s.invalidPhones, partnerRows: s.partnerRows, unmappedStores: s.unmappedStores } }, '匯入中，請稍候…'); }
-  catch (e) { toast(e.message); return; }
-  ca.import = null; $('caIPreview').innerHTML = '';
-  const stores = Object.entries(d.addedByStore);
-  $('caIResult').innerHTML = `<div class="card"><h2>匯入完成</h2>
-    <div class="sum big"><span>新增沉睡客人</span><b>${fmt(d.added['非儲值'] + d.added['儲值'])}</b></div>
-    <div class="sub2"><span>非儲值</span><b>${fmt(d.added['非儲值'])}</b></div><div class="sub2"><span>儲值</span><b>${fmt(d.added['儲值'])}</b></div>
-    ${stores.map(([k, v]) => `<div class="sub2"><span>${esc(k)}</span><b>非儲值 ${v['非儲值']}・儲值 ${v['儲值']}</b></div>`).join('')}
-    <div class="sum"><span>喚回成功</span><b>${fmt(d.recovered)}</b></div>
-    <div class="sum"><span>已自行回店</span><b>${fmt(d.selfReturned)}</b></div>
-    <div class="sum"><span>勿擾名單排除</span><b>${fmt(d.skippedDnd)}</b></div>
-    <div class="sum"><span>無效手機</span><b>${fmt(d.invalidPhones)}</b></div>
-    <div class="sum"><span>離職人員客人重新分配</span><b>${fmt(d.reassigned)}</b></div>
-    ${d.unmappedStores.length ? `<div class="flag yellow">🟡 對應不到的店家：${d.unmappedStores.map(esc).join('、')}</div>` : ''}
-    ${d.needManual.length ? `<h3 style="margin:14px 0 4px">需要手動分配（${d.needManual.length}）</h3>${d.needManual.map(u => `<div class="sub2"><span>${esc(u.id || '—')}・${esc(u.store)}</span><b>${esc(u.type)}</b></div>`).join('')}
-      <p class="hint">請到「總覽」的「手動重新分配」指定負責人，或先到「人員」新增該店的在職養護師。</p>` : ''}</div>`;
-}
-
 // ----- 人員 -----
 async function caStaffRender() {
   try { ca.staff = (await api('staffList', {}, '載入中…')).staff; } catch (e) { toast(e.message); return; }
@@ -1572,6 +1784,46 @@ function summarizeShenmei(rows, storeMap, today) {
   return { customers, stats };
 }
 // </shenmei-parse>
+// <settle-parse> 神美訂單列表 → 月結用的訂單明細（純函式，tests/settle.test.js 會直接測這段）
+// 回傳的 phone 只在瀏覽器裡用來產生客人代碼，送到後端前會刪掉；客人姓名完全不讀。
+function extractOrderLines(rows) {
+  const hi = rows.findIndex(r => r.some(c => String(c).trim() === '訂單號碼') && r.some(c => String(c).trim() === '業績'));
+  if (hi < 0) throw new Error('這不是神美「訂單列表」：找不到「訂單號碼」「業績」欄位');
+  const H = rows[hi].map(c => String(c).trim()), C = {};
+  const need = ['訂單號碼', '訂單時間', '店家', '實收', '分類', '品項', '工作人員', '職位', '業績', '消費方式', '支付方式'];
+  const opt = ['手機', '定價', '數量', '總價', '折扣', '指定', '項目協助'];
+  const miss = need.filter(n => H.indexOf(n) < 0);
+  if (miss.length) throw new Error('神美檔案缺少欄位：' + miss.join('、'));
+  need.concat(opt).forEach(n => C[n] = H.indexOf(n));
+  const str = v => String(v == null ? '' : v).trim();
+  const num = v => { const n = Number(String(v == null ? '' : v).replace(/[,\s元$]/g, '')); return isFinite(n) ? n : 0; };
+  const lines = [], months = {}, seen = {};
+  let cur = null, dup = 0;
+  for (let i = hi + 1; i < rows.length; i++) {
+    const r = rows[i];
+    if (!r || r.every(c => c === '' || c == null)) continue;
+    if (r.some(c => String(c).trim() === '訂單號碼') && r.some(c => String(c).trim() === '業績')) { cur = null; continue; } // 第二個檔案的表頭
+    const g = n => (C[n] >= 0 ? r[C[n]] : '');
+    const no = str(g('訂單號碼'));
+    if (no) { // 訂單層級欄位只在第一列，後面幾列往下補
+      const when = smWhen(g('訂單時間'));
+      const ph = C['手機'] >= 0 ? smPhone(g('手機')) : '';
+      cur = { store: str(g('店家')), orderNo: no, date: when ? when.d : '', ts: when ? when.ts : '', phone: ph || '',
+        price: num(g('定價')), paid: num(g('實收')), consume: str(g('消費方式')), payment: str(g('支付方式')), n: 0 };
+      const key = cur.store + '#' + cur.orderNo;
+      if (seen[key]) { cur.dup = true; dup++; } else seen[key] = 1; // 檔案期間重疊：同一張訂單只留第一次
+    }
+    if (!cur || !cur.date || cur.dup) continue;
+    cur.n++;
+    months[cur.date.slice(0, 7)] = (months[cur.date.slice(0, 7)] || 0) + 1;
+    lines.push({ store: cur.store, orderNo: cur.orderNo, lineNo: cur.n, date: cur.date, ts: cur.ts, phone: cur.phone,
+      price: cur.price, paid: cur.paid, consume: cur.consume, payment: cur.payment,
+      category: str(g('分類')), item: str(g('品項')), qty: num(g('數量')), total: num(g('總價')), discount: str(g('折扣')),
+      staff: str(g('工作人員')), role: str(g('職位')), designated: str(g('指定')), amount: num(g('業績')), assist: num(g('項目協助')) });
+  }
+  return { lines, duplicates: dup, months: Object.keys(months).sort().map(m => ({ month: m, rows: months[m] })) };
+}
+// </settle-parse>
 
 start();
 </script>
