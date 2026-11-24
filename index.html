@@ -149,6 +149,7 @@
   .seg.four { grid-template-columns:repeat(4,minmax(0,1fr)); }
   .seg.three { grid-template-columns:repeat(3,minmax(0,1fr)); }
   nav.tabs .in.many button { font-size:14px; }
+  .fwthumb { display:block; width:100%; margin-top:8px; border-radius:10px; border:1px solid var(--line); }
   .sthead { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:6px; }
   .sthead b { font-size:17px; }
   .sthead small { display:block; color:var(--sub); font-size:13px; font-weight:400; }
@@ -255,6 +256,47 @@
     <div id="stP" hidden>
       <div class="card"><label class="f"><b>月份</b><select id="stMonthP" onchange="stMonth(this.value)"></select></label></div>
       <div id="stPerf"></div>
+    </div>
+  </section>
+
+  <!-- 養護師、店長：回流訊息（服務前後照 → 模糊臉部 → 對比圖＋公版訊息） -->
+  <section id="v-follow" hidden>
+    <h1>回流訊息</h1>
+    <div class="card">
+      <label class="f" id="fwStoreBox"><b>門店</b><select id="fwStore"></select></label>
+      <div class="row2">
+        <div>
+          <b style="font-size:15px">服務前</b>
+          <label class="photo" style="margin-top:6px"><input type="file" accept="image/*" onchange="fwPick('before', this)"><span class="pick" id="fwPickBefore">拍照／選照片</span></label>
+          <img id="fwImgBefore" class="fwthumb" alt="服務前（已處理）" hidden>
+        </div>
+        <div>
+          <b style="font-size:15px">服務後</b>
+          <label class="photo" style="margin-top:6px"><input type="file" accept="image/*" onchange="fwPick('after', this)"><span class="pick" id="fwPickAfter">拍照／選照片</span></label>
+          <img id="fwImgAfter" class="fwthumb" alt="服務後（已處理）" hidden>
+        </div>
+      </div>
+      <div id="fwFaceNote"></div>
+    </div>
+    <div class="card">
+      <label class="f"><b>客人稱呼</b><input id="fwCustomer" maxlength="20" placeholder="例如：王小姐" autocomplete="off"></label>
+      <label class="f"><b>建議回來時間</b><select id="fwTime"></select></label>
+      <label class="check"><input type="checkbox" id="fwSkip">這次不存成 PO 文素材（例如有臉沒被模糊）</label>
+      <button class="btn" onclick="fwMake()">產生對比圖和訊息</button>
+    </div>
+    <div class="card" id="fwOut" hidden>
+      <h2>傳給客人</h2>
+      <img id="fwCollage" alt="服務前後對比圖" style="display:block;width:100%;border-radius:12px;border:1px solid var(--line)">
+      <p class="hint" id="fwSaved"></p>
+      <button class="btn" id="fwShareBtn" onclick="fwShare()">分享（選 LINE 官方帳號）</button>
+      <div class="row2" style="margin-top:10px">
+        <button class="btn ghost" style="margin:0" onclick="fwCopyText()">複製訊息</button>
+        <button class="btn ghost" style="margin:0" onclick="fwCopyImg()">複製圖片</button>
+      </div>
+      <a class="btn ghost" id="fwDownload" download="回流對比圖.jpg" style="text-align:center;text-decoration:none;margin-top:10px">儲存對比圖</a>
+      <p class="hint">iPhone 也可以長按上面的圖片 →「加入照片」。</p>
+      <label class="f" style="margin-top:10px"><b>訊息</b>（可以再修改）<textarea id="fwMsg" style="min-height:280px"></textarea></label>
+      <button class="btn ghost" onclick="fwReset()">下一位客人</button>
     </div>
   </section>
 
@@ -494,6 +536,7 @@
         <label class="f"><b>客戶回饋選項</b>（以「、」分隔）<textarea id="stFeedback"></textarea></label>
         <label class="f"><b>神美店家對應</b>（神美名稱=系統店家，以「、」分隔）<textarea id="stStoreMap"></textarea></label>
         <label class="f"><b>建議說法</b><textarea id="stScript" style="min-height:180px"></textarea></label>
+        <label class="f"><b>回流訊息公版</b>（{客人}、{養護師}、{時間} 會自動換掉）<textarea id="stFollowTpl" style="min-height:240px"></textarea></label>
         <button class="btn" onclick="caSaveSettings()">儲存設定</button>
       </div>
     </div>
@@ -539,16 +582,16 @@ const GOOGLE_CLIENT_ID = '666667317547-qt7hdpi8du19tq2fb2genfvhkcs7hu5j.apps.goo
 
 const $ = id => document.getElementById(id);
 const LS = { api: 'chiefrom_api', session: 'chiefrom_session', name: 'chiefrom_name', names: 'chiefrom_names' };
-const VIEWS = ['v-setup', 'v-login', 'v-pick', 'v-settle', 'v-overview', 'v-monthly', 'v-records', 'v-report', 'v-confirm', 'v-done', 'v-expense', 'v-care', 'v-careAdmin'];
+const VIEWS = ['v-setup', 'v-login', 'v-pick', 'v-settle', 'v-follow', 'v-overview', 'v-monthly', 'v-records', 'v-report', 'v-confirm', 'v-done', 'v-expense', 'v-care', 'v-careAdmin'];
 const ROLES = ['總部', '經理', '店長', '客服', '養護師'];
 const TABS = {
-  store: [['r', '每日回報'], ['e', '零用金<wbr>支出'], ['q', '紀錄'], ['c', '關懷']],
+  store: [['r', '每日回報'], ['e', '零用金<wbr>支出'], ['q', '紀錄'], ['f', '回流<wbr>訊息'], ['c', '關懷']],
   admin: [['o', '每日總覽'], ['q', '紀錄'], ['m', '月報'], ['t', '月結'], ['c', '關懷']],
-  staff: [['r', '每日回報'], ['e', '零用金<wbr>支出'], ['k', '關懷']], // 養護師：收班填報＋自己的關懷名單
+  staff: [['r', '每日回報'], ['e', '零用金<wbr>支出'], ['f', '回流<wbr>訊息'], ['k', '關懷']], // 養護師：收班填報＋自己的關懷名單
   hq: [['o', '每日總覽'], ['q', '紀錄'], ['m', '月報'], ['t', '月結'], ['c', '關懷'], ['s', '門店<wbr>畫面']], // 總部（經理沒有門店畫面）
   view: [['r', '每日回報'], ['e', '零用金<wbr>支出'], ['q', '紀錄']], // 總部唯讀檢視某間店
 };
-const VIEW_TAB = { 'v-report': 'r', 'v-confirm': 'r', 'v-done': 'r', 'v-expense': 'e', 'v-records': 'q', 'v-overview': 'o', 'v-monthly': 'm', 'v-careAdmin': 'c', 'v-care': 'k', 'v-pick': 's', 'v-settle': 't' };
+const VIEW_TAB = { 'v-report': 'r', 'v-confirm': 'r', 'v-done': 'r', 'v-expense': 'e', 'v-records': 'q', 'v-overview': 'o', 'v-monthly': 'm', 'v-careAdmin': 'c', 'v-care': 'k', 'v-pick': 's', 'v-settle': 't', 'v-follow': 'f' };
 const PHOTOS = {
   deposit: { box: 'depositPhotoBox', label: '匯款證明' },
   receipt: { box: 'receiptPhotoBox', label: '收據照片' },
@@ -654,7 +697,7 @@ async function onGoogleLogin(resp) {
   } catch (e) { session = null; toast(e.message); }
 }
 function logout() {
-  viewStore = null; applyReadonly(); st = { seg: 'u', init: null, month: '', parsed: null };
+  viewStore = null; applyReadonly(); st = { seg: 'u', init: null, month: '', parsed: null }; fw.init = null; fwReset();
   const token = session && session.token;
   if (token && apiUrl()) fetch(apiUrl(), { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'logout', token }) }).catch(() => {});
   if (window.google && google.accounts && google.accounts.id) google.accounts.id.disableAutoSelect();
@@ -773,6 +816,7 @@ function toggleReason(key) { $('why-' + key).hidden = $('chk-' + key).checked; }
 function tab(k) {
   if (k === 's') showPicker();
   else if (k === 't') settleOpen();
+  else if (k === 'f') followOpen();
   else if (k === 'c') careAdminOpen();
   else if (k === 'k') careStart();
   else if (k === 'o') loadOverview();
@@ -1182,6 +1226,167 @@ async function loadOverview() {
   }).join('') || '<div class="card">「設定」分頁裡沒有啟用中的門店。</div>';
   show('v-overview');
   return true;
+}
+
+// ===== 回流訊息：服務前後照 → 自動模糊臉部 → 對比圖＋公版訊息；模糊後的照片存成 PO 文素材 =====
+// 客人稱呼與照片只在這台裝置的記憶體裡，不寫入 localStorage／console／網址。
+// <follow-core> 純函式（tests/follow.test.js 會直接測這段）
+const FW_TIMES = ['三週後', '一個月後', '一個半月後', '兩個月後'];
+function fillTemplate(tpl, v) {
+  return String(tpl || '').split('{客人}').join(v.customer || '').split('{養護師}').join(v.staff || '').split('{時間}').join(v.time || '');
+}
+/** 臉部框放大一點（頭髮、下巴也一起模糊），並限制在照片範圍內 */
+function padBox(b, W, H, pad) {
+  const px = b.width * pad, py = b.height * pad;
+  const x = Math.max(0, Math.floor(b.originX - px)), y = Math.max(0, Math.floor(b.originY - py * 1.2));
+  const x2 = Math.min(W, Math.ceil(b.originX + b.width + px)), y2 = Math.min(H, Math.ceil(b.originY + b.height + py));
+  return { x, y, w: Math.max(0, x2 - x), h: Math.max(0, y2 - y) };
+}
+/** 對比圖版面：1080×1350，左右各一張，下方品牌色帶 */
+const FW_LAYOUT = { W: 1080, H: 1350, band: 150, gap: 6 };
+function coverRect(iw, ih, bw, bh) { // 等比例放大填滿框，置中裁切
+  const s = Math.max(bw / iw, bh / ih), w = bw / s, h = bh / s;
+  return { sx: (iw - w) / 2, sy: (ih - h) / 2, sw: w, sh: h };
+}
+// </follow-core>
+
+const FW_MP = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
+const FW_MODEL = 'https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite';
+let fw = { init: null, before: null, after: null, faces: {}, detector: null, detectorFailed: false, collage: null };
+async function followOpen() {
+  show('v-follow');
+  if (fw.init) return;
+  try { fw.init = await api('followInit', {}, '載入中…'); } catch (e) { toast(/未知的動作/.test(e.message) ? '後端還是舊版，請先更新 Apps Script 並重新部署' : e.message); return; }
+  const stores = fw.init.stores || [];
+  $('fwStore').innerHTML = stores.map(n => `<option>${esc(n)}</option>`).join('');
+  $('fwStoreBox').hidden = stores.length < 2;
+  $('fwTime').innerHTML = FW_TIMES.map(t => `<option${t === '一個月後' ? ' selected' : ''}>${t}</option>`).join('');
+}
+async function fwDetector() {
+  if (fw.detector || fw.detectorFailed) return fw.detector;
+  try {
+    const v = await import(FW_MP + '/vision_bundle.mjs');
+    const files = await v.FilesetResolver.forVisionTasks(FW_MP + '/wasm');
+    fw.detector = await v.FaceDetector.createFromOptions(files, { baseOptions: { modelAssetPath: FW_MODEL }, runningMode: 'IMAGE', minDetectionConfidence: 0.6 }); // 0.6：正臉約 0.9；低於 0.6 多半是誤判（例如動物、頭髮）
+  } catch (e) { fw.detectorFailed = true; }
+  return fw.detector;
+}
+function fwLoadImage(file) {
+  return new Promise((ok, fail) => {
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => { URL.revokeObjectURL(url); ok(img); };
+    img.onerror = () => { URL.revokeObjectURL(url); fail(new Error('無法讀取這張照片，請換一張')); };
+    img.src = url;
+  });
+}
+/** 讀照片 → 縮到長邊 1600 → 偵測臉部並打馬賽克 → 回傳 canvas 與偵測到的臉數 */
+async function fwProcess(file) {
+  const img = await fwLoadImage(file);
+  const k = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
+  const c = document.createElement('canvas');
+  c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+  const g = c.getContext('2d'); g.drawImage(img, 0, 0, c.width, c.height);
+  const det = await fwDetector();
+  if (!det) return { canvas: c, faces: null };
+  const boxes = det.detect(c).detections.map(d => padBox(d.boundingBox, c.width, c.height, 0.35)).filter(b => b.w > 0 && b.h > 0);
+  boxes.forEach(b => { // 馬賽克：縮到很小再放大
+    const t = document.createElement('canvas'), n = 10;
+    t.width = Math.max(1, Math.round(b.w / Math.max(b.w, b.h) * n)); t.height = Math.max(1, Math.round(b.h / Math.max(b.w, b.h) * n));
+    t.getContext('2d').drawImage(c, b.x, b.y, b.w, b.h, 0, 0, t.width, t.height);
+    g.imageSmoothingEnabled = false; g.drawImage(t, 0, 0, t.width, t.height, b.x, b.y, b.w, b.h); g.imageSmoothingEnabled = true;
+  });
+  return { canvas: c, faces: boxes.length };
+}
+async function fwPick(which, input) {
+  const file = input.files[0];
+  input.value = '';
+  if (!file) return;
+  busy(true, fw.detector ? '處理照片中…' : '第一次使用：載入臉部偵測中…');
+  try {
+    const r = await fwProcess(file);
+    fw[which] = r.canvas; fw.faces[which] = r.faces;
+  } catch (e) { busy(false); toast(e.message); return; }
+  busy(false);
+  const img = $(which === 'before' ? 'fwImgBefore' : 'fwImgAfter');
+  img.src = fw[which].toDataURL('image/jpeg', 0.7); img.hidden = false;
+  $(which === 'before' ? 'fwPickBefore' : 'fwPickAfter').textContent = '✓ 已選擇，點此重選';
+  fwFaceNote();
+}
+function fwFaceNote() {
+  const f = fw.faces, parts = [];
+  if (fw.detectorFailed) {
+    $('fwSkip').checked = true;
+    $('fwFaceNote').innerHTML = '<div class="flag yellow">🟡 無法載入臉部偵測，這次不會自動模糊，已預設「不存成 PO 文素材」。照片仍可傳給客人。</div>';
+    return;
+  }
+  ['before', 'after'].forEach(k => { if (f[k] != null) parts.push(`${k === 'before' ? '服務前' : '服務後'}${f[k] ? `偵測到 ${f[k]} 張臉，已模糊` : '沒有偵測到臉'}`); });
+  $('fwFaceNote').innerHTML = parts.length ? `<p class="hint" style="margin-bottom:0">${parts.join('；')}。請看一下照片，如果有臉沒被模糊，請勾選下面的「這次不存成 PO 文素材」。</p>` : '';
+}
+function fwDrawCollage() {
+  const L = FW_LAYOUT, c = document.createElement('canvas');
+  c.width = L.W; c.height = L.H;
+  const g = c.getContext('2d'), ph = L.H - L.band, pw = (L.W - L.gap) / 2;
+  g.fillStyle = '#f6efe6'; g.fillRect(0, 0, L.W, L.H);
+  [[fw.before, 0, 'BEFORE'], [fw.after, pw + L.gap, 'AFTER']].forEach(([src, x, label]) => {
+    const r = coverRect(src.width, src.height, pw, ph);
+    g.drawImage(src, r.sx, r.sy, r.sw, r.sh, x, 0, pw, ph);
+    g.font = '700 34px -apple-system, "PingFang TC", "Noto Sans TC", sans-serif';
+    const tw = g.measureText(label).width;
+    g.fillStyle = 'rgba(74,59,47,.72)';
+    g.beginPath(); if (g.roundRect) g.roundRect(x + 24, 24, tw + 40, 56, 28); else g.rect(x + 24, 24, tw + 40, 56); g.fill();
+    g.fillStyle = '#fff'; g.textBaseline = 'middle'; g.fillText(label, x + 44, 53);
+  });
+  g.fillStyle = '#8f6b46'; g.fillRect(0, ph, L.W, L.band);
+  g.fillStyle = '#fff'; g.textBaseline = 'middle';
+  g.font = '700 46px -apple-system, "PingFang TC", "Noto Sans TC", sans-serif'; g.fillText('頭沐 | CHIEFROM', 44, ph + L.band / 2);
+  g.font = '400 30px -apple-system, "PingFang TC", "Noto Sans TC", sans-serif';
+  const d = localToday().replace(/-/g, '.'), dw = g.measureText(d).width; g.fillText(d, L.W - 44 - dw, ph + L.band / 2);
+  return c;
+}
+async function fwMake() {
+  if (!fw.before || !fw.after) return toast('請選擇服務前、服務後兩張照片');
+  const customer = $('fwCustomer').value.trim();
+  if (!customer) { toast('請填寫客人稱呼'); $('fwCustomer').focus(); return; }
+  const canvas = fwDrawCollage();
+  const blob = await new Promise(ok => canvas.toBlob(ok, 'image/jpeg', 0.88));
+  fw.collage = { canvas, blob, file: new File([blob], '回流對比圖.jpg', { type: 'image/jpeg' }) };
+  const url = URL.createObjectURL(blob);
+  $('fwCollage').src = url; $('fwDownload').href = url;
+  $('fwMsg').value = fillTemplate(fw.init.template, { customer, staff: fw.init.name, time: $('fwTime').value });
+  $('fwShareBtn').hidden = !(navigator.canShare && navigator.canShare({ files: [fw.collage.file] }));
+  $('fwOut').hidden = false;
+  if ($('fwSkip').checked) { $('fwSaved').textContent = '這次沒有存成 PO 文素材。'; }
+  else {
+    $('fwSaved').textContent = '正在存成 PO 文素材…';
+    const jpg = cv => cv.toDataURL('image/jpeg', 0.85);
+    try {
+      const r = await api('followSave', { store: $('fwStore').value, date: localToday(), photos: { before: jpg(fw.before), after: jpg(fw.after), collage: jpg(canvas) } }, '存成 PO 文素材…');
+      $('fwSaved').textContent = `已存成 PO 文素材（${r.folder}，${r.saved} 張）。`;
+    } catch (e) { $('fwSaved').textContent = '沒有存成 PO 文素材：' + e.message + '（仍可傳給客人）'; }
+  }
+  $('fwOut').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+async function fwShare() {
+  try { await navigator.share({ files: [fw.collage.file], text: $('fwMsg').value }); }
+  catch (e) { if (e && e.name !== 'AbortError') toast('這支手機無法直接分享，請改用「複製訊息」和「儲存對比圖」'); }
+}
+async function fwCopyText() {
+  try { await navigator.clipboard.writeText($('fwMsg').value); okToast('已複製訊息，到 LINE 聊天室貼上'); }
+  catch (e) { $('fwMsg').focus(); $('fwMsg').select(); toast('請長按訊息框 →「拷貝」'); }
+}
+async function fwCopyImg() {
+  try {
+    const png = new Promise(ok => fw.collage.canvas.toBlob(ok, 'image/png'));
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]);
+    okToast('已複製圖片，到 LINE 聊天室貼上');
+  } catch (e) { toast('這支手機無法複製圖片，請改用「儲存對比圖」或長按圖片儲存'); }
+}
+function fwReset() {
+  fw.before = fw.after = fw.collage = null; fw.faces = {};
+  ['fwImgBefore', 'fwImgAfter'].forEach(id => { $(id).hidden = true; $(id).removeAttribute('src'); });
+  $('fwPickBefore').textContent = '拍照／選照片'; $('fwPickAfter').textContent = '拍照／選照片';
+  $('fwCustomer').value = ''; $('fwSkip').checked = false; $('fwFaceNote').innerHTML = ''; $('fwMsg').value = '';
+  $('fwOut').hidden = true; window.scrollTo(0, 0);
 }
 
 // ===== 月結：上傳神美訂單列表、對帳、業績報表 =====
@@ -1701,12 +1906,12 @@ function caSettingsRender() {
   const s = ca.init.settings;
   $('stLimit').value = s.dailyLimit; $('stDormant').value = s.dormantDays; $('stRetry').value = s.retryDays;
   $('stWatch').value = s.watchDays; $('stAppt').value = s.apptWatchDays; $('stRetain').value = s.retainMonths;
-  $('stFeedback').value = s.feedbackOptions.join('、'); $('stScript').value = s.script;
+  $('stFeedback').value = s.feedbackOptions.join('、'); $('stScript').value = s.script; $('stFollowTpl').value = s.followTemplate || '';
   $('stStoreMap').value = Object.entries(s.storeMap).map(([k, v]) => k + '=' + v).join('、');
 }
 async function caSaveSettings() {
   const settings = { '關懷每日上限': $('stLimit').value, '沉睡天數': $('stDormant').value, '未接重撥間隔天數': $('stRetry').value, '觀察天數': $('stWatch').value,
-    '預約觀察天數': $('stAppt').value, '個資保留月數': $('stRetain').value, '客戶回饋選項': $('stFeedback').value, '神美店家對應': $('stStoreMap').value, '建議說法': $('stScript').value };
+    '預約觀察天數': $('stAppt').value, '個資保留月數': $('stRetain').value, '客戶回饋選項': $('stFeedback').value, '神美店家對應': $('stStoreMap').value, '建議說法': $('stScript').value, '回流訊息公版': $('stFollowTpl').value };
   try { const d = await api('careSaveSettings', { settings }, '儲存中…'); ca.init.settings = d.settings; caSettingsRender(); okToast('設定已儲存'); }
   catch (e) { toast(e.message); }
 }
