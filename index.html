@@ -1244,6 +1244,7 @@ function padBox(b, W, H, pad) {
 }
 /** 對比圖版面：1080×1920（手機一個畫面），上下各一張，照片完整不裁切，最下方淡淡的品牌名 */
 const FW_LAYOUT = { W: 1080, H: 1920, pad: 40, gap: 24, foot: 96 };
+const FW_TILE_MIN = 0.75, FW_TILE_MAXFRAC = 0.45; // 分區偵測：分數門檻、臉最大佔區塊寬度的比例
 function coverRect(iw, ih, bw, bh) { // 等比例放大填滿框，置中裁切
   const s = Math.max(bw / iw, bh / ih), w = bw / s, h = bh / s;
   return { sx: (iw - w) / 2, sy: (ih - h) / 2, sw: w, sh: h };
@@ -1318,7 +1319,12 @@ async function fwProcess(file) {
     const k2 = 640 / Math.max(t.w, t.h), tc = document.createElement('canvas');
     tc.width = Math.round(t.w * k2); tc.height = Math.round(t.h * k2);
     tc.getContext('2d').drawImage(c, t.x, t.y, t.w, t.h, 0, 0, tc.width, tc.height);
-    det.detect(tc).detections.forEach(d => { const bb = d.boundingBox; found.push({ originX: t.x + bb.originX / k2, originY: t.y + bb.originY / k2, width: bb.width / k2, height: bb.height / k2 }); });
+    det.detect(tc).detections.forEach(d => {
+      const bb = d.boundingBox, score = d.categories && d.categories[0] ? d.categories[0].score : 0;
+      // 放大的小區塊只收「分數高、而且臉很小」的：真正的背景小臉約 0.9；頸背、頭髮誤判通常分數低、框又大
+      if (score < FW_TILE_MIN || bb.width / k2 > t.w * FW_TILE_MAXFRAC) return;
+      found.push({ originX: t.x + bb.originX / k2, originY: t.y + bb.originY / k2, width: bb.width / k2, height: bb.height / k2 });
+    });
   });
   const boxes = mergeBoxes(found.map(bb => padBox(bb, c.width, c.height, 0.35)).filter(b => b.w > 0 && b.h > 0));
   boxes.forEach(b => { // 馬賽克：縮到很小再放大
@@ -1359,19 +1365,17 @@ function fwDrawCollage() {
   c.width = L.W; c.height = L.H;
   const g = c.getContext('2d'), font = '-apple-system, "PingFang TC", "Noto Sans TC", sans-serif';
   g.fillStyle = '#f6efe6'; g.fillRect(0, 0, L.W, L.H);
-  const slotH = (L.H - L.pad - L.gap - L.foot) / 2, slotW = L.W - L.pad * 2;
+  const slotH = (L.H - L.pad - L.gap - L.foot) / 2, slotW = L.W - L.pad * 2, labelH = 58;
   [[fw.before, L.pad, 'BEFORE'], [fw.after, L.pad + slotH + L.gap, 'AFTER']].forEach(([src, y, label]) => {
-    const r = containRect(src.width, src.height, L.pad, y, slotW, slotH);
+    // 標籤放在照片上方的留白處，不會蓋到頭髮
+    const r = containRect(src.width, src.height, L.pad, y + labelH, slotW, slotH - labelH);
+    g.font = '700 34px ' + font; g.fillStyle = '#6b5038'; g.textBaseline = 'middle'; g.textAlign = 'center';
+    g.fillText(label, L.W / 2, r.y - labelH / 2);
     g.save(); g.beginPath();
     if (g.roundRect) g.roundRect(r.x, r.y, r.w, r.h, 18); else g.rect(r.x, r.y, r.w, r.h);
     g.clip(); g.drawImage(src, r.x, r.y, r.w, r.h); g.restore();
-    g.font = '700 32px ' + font;
-    const tw = g.measureText(label).width;
-    g.fillStyle = 'rgba(74,59,47,.72)';
-    g.beginPath(); if (g.roundRect) g.roundRect(r.x + 18, r.y + 18, tw + 36, 52, 26); else g.rect(r.x + 18, r.y + 18, tw + 36, 52); g.fill();
-    g.fillStyle = '#fff'; g.textBaseline = 'middle'; g.fillText(label, r.x + 36, r.y + 45);
   });
-  g.font = '600 30px ' + font; g.fillStyle = 'rgba(143,107,70,.75)'; g.textBaseline = 'middle'; g.textAlign = 'center';
+  g.font = '600 30px ' + font; g.fillStyle = 'rgba(143,107,70,.75)'; g.textAlign = 'center';
   g.fillText('頭沐 | CHIEFROM', L.W / 2, L.H - L.foot / 2);
   g.textAlign = 'left';
   return c;
