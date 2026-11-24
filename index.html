@@ -288,13 +288,13 @@
       <h2>傳給客人</h2>
       <img id="fwCollage" alt="服務前後對比圖" style="display:block;width:100%;border-radius:12px;border:1px solid var(--line)">
       <p class="hint" id="fwSaved"></p>
-      <button class="btn" id="fwShareBtn" onclick="fwShare()">分享（選 LINE 官方帳號）</button>
-      <div class="row2" style="margin-top:10px">
-        <button class="btn ghost" style="margin:0" onclick="fwCopyText()">複製訊息</button>
-        <button class="btn ghost" style="margin:0" onclick="fwCopyImg()">複製圖片</button>
-      </div>
-      <a class="btn ghost" id="fwDownload" download="回流對比圖.jpg" style="text-align:center;text-decoration:none;margin-top:10px">儲存對比圖</a>
-      <p class="hint">iPhone 也可以長按上面的圖片 →「加入照片」。</p>
+      <p class="hint" style="margin:12px 0 8px">照順序按：先貼圖片，再貼訊息（手機一次只能複製一樣東西）。</p>
+      <button class="btn" onclick="fwStep1()">① 複製圖片並開啟聊天</button>
+      <p class="hint" style="margin:6px 0 10px">在官方帳號聊天找到這位客人，長按輸入框 →「貼上」，送出圖片。</p>
+      <button class="btn" onclick="fwCopyText()">② 複製訊息</button>
+      <p class="hint" style="margin:6px 0 10px">回到聊天室，長按輸入框 →「貼上」，送出訊息。</p>
+      <a class="btn ghost" id="fwDownload" download="回流對比圖.jpg" style="text-align:center;text-decoration:none">儲存對比圖（備用）</a>
+      <p class="hint">貼不上圖片時，可以先存圖，再從聊天室的相片選取。iPhone 也可以長按上面的圖片 →「加入照片」。</p>
       <label class="f" style="margin-top:10px"><b>訊息</b>（可以再修改）<textarea id="fwMsg" style="min-height:280px"></textarea></label>
       <button class="btn ghost" onclick="fwReset()">下一位客人</button>
     </div>
@@ -1353,7 +1353,6 @@ async function fwMake() {
   const url = URL.createObjectURL(blob);
   $('fwCollage').src = url; $('fwDownload').href = url;
   $('fwMsg').value = fillTemplate(fw.init.template, { customer, staff: fw.init.name, time: $('fwTime').value });
-  $('fwShareBtn').hidden = !(navigator.canShare && navigator.canShare({ files: [fw.collage.file] }));
   $('fwOut').hidden = false;
   if ($('fwSkip').checked) { $('fwSaved').textContent = '這次沒有存成 PO 文素材。'; }
   else {
@@ -1366,20 +1365,21 @@ async function fwMake() {
   }
   $('fwOut').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
-async function fwShare() {
-  try { await navigator.share({ files: [fw.collage.file], text: $('fwMsg').value }); }
-  catch (e) { if (e && e.name !== 'AbortError') toast('這支手機無法直接分享，請改用「複製訊息」和「儲存對比圖」'); }
-}
-async function fwCopyText() {
-  try { await navigator.clipboard.writeText($('fwMsg').value); okToast('已複製訊息，到 LINE 聊天室貼上'); }
-  catch (e) { $('fwMsg').focus(); $('fwMsg').select(); toast('請長按訊息框 →「拷貝」'); }
-}
-async function fwCopyImg() {
+const FW_CHAT = 'https://chat.line.biz/'; // LINE 官方帳號網頁版聊天
+/** ① 複製圖片，同時開啟官方帳號聊天（兩件事都要在同一次點擊裡開始，手機才不會擋掉） */
+function fwStep1() {
+  let copying;
   try {
     const png = new Promise(ok => fw.collage.canvas.toBlob(ok, 'image/png'));
-    await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]);
-    okToast('已複製圖片，到 LINE 聊天室貼上');
-  } catch (e) { toast('這支手機無法複製圖片，請改用「儲存對比圖」或長按圖片儲存'); }
+    copying = navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]);
+  } catch (e) { copying = Promise.reject(e); }
+  window.open(FW_CHAT, '_blank');
+  copying.then(() => okToast('已複製圖片，到客人聊天室貼上'))
+    .catch(() => toast('這支手機無法複製圖片，請改用「儲存對比圖」，再從聊天室選相片'));
+}
+async function fwCopyText() {
+  try { await navigator.clipboard.writeText($('fwMsg').value); okToast('已複製訊息，回到聊天室貼上'); }
+  catch (e) { $('fwMsg').focus(); $('fwMsg').select(); toast('請長按訊息框 →「拷貝」'); }
 }
 function fwReset() {
   fw.before = fw.after = fw.collage = null; fw.faces = {};
