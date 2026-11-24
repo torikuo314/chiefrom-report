@@ -1242,11 +1242,36 @@ function padBox(b, W, H, pad) {
   const x2 = Math.min(W, Math.ceil(b.originX + b.width + px)), y2 = Math.min(H, Math.ceil(b.originY + b.height + py));
   return { x, y, w: Math.max(0, x2 - x), h: Math.max(0, y2 - y) };
 }
-/** 對比圖版面：1080×1350，左右各一張，下方品牌色帶 */
-const FW_LAYOUT = { W: 1080, H: 1350, band: 150, gap: 6 };
+/** 對比圖版面：1080×1920（手機一個畫面），上下各一張，照片完整不裁切，最下方淡淡的品牌名 */
+const FW_LAYOUT = { W: 1080, H: 1920, pad: 40, gap: 24, foot: 96 };
 function coverRect(iw, ih, bw, bh) { // 等比例放大填滿框，置中裁切
   const s = Math.max(bw / iw, bh / ih), w = bw / s, h = bh / s;
   return { sx: (iw - w) / 2, sy: (ih - h) / 2, sw: w, sh: h };
+}
+function containRect(iw, ih, bx, by, bw, bh) { // 等比例縮放、完整放進框裡、置中（不裁切）
+  const s = Math.min(bw / iw, bh / ih), w = iw * s, h = ih * s;
+  return { x: bx + (bw - w) / 2, y: by + (bh - h) / 2, w, h };
+}
+/** 分區放大偵測用：整張以外，再切成互相重疊的正方形小區塊（背景、鏡子裡的小臉放大後才偵測得到） */
+function tileRects(W, H) {
+  const t = Math.round(Math.max(Math.min(300, W, H), Math.min(600, Math.min(W, H) * 0.5))), step = Math.round(t / 2), out = [];
+  const pos = n => { const a = []; for (let v = 0; v + t < n; v += step) a.push(v); a.push(Math.max(0, n - t)); return a.filter((v, i, arr) => arr.indexOf(v) === i); };
+  pos(H).forEach(y => pos(W).forEach(x => out.push({ x, y, w: Math.min(t, W), h: Math.min(t, H) })));
+  return out;
+}
+/** 合併重疊的臉部框（同一張臉在不同區塊都被偵測到） */
+function mergeBoxes(boxes) {
+  const out = [];
+  boxes.forEach(b => {
+    const hit = out.find(o => {
+      const ix = Math.max(0, Math.min(o.x + o.w, b.x + b.w) - Math.max(o.x, b.x)), iy = Math.max(0, Math.min(o.y + o.h, b.y + b.h) - Math.max(o.y, b.y));
+      return ix * iy > 0.3 * Math.min(o.w * o.h, b.w * b.h);
+    });
+    if (!hit) { out.push(Object.assign({}, b)); return; }
+    const x = Math.min(hit.x, b.x), y = Math.min(hit.y, b.y);
+    hit.w = Math.max(hit.x + hit.w, b.x + b.w) - x; hit.h = Math.max(hit.y + hit.h, b.y + b.h) - y; hit.x = x; hit.y = y;
+  });
+  return out;
 }
 // </follow-core>
 
@@ -1288,7 +1313,14 @@ async function fwProcess(file) {
   const g = c.getContext('2d'); g.drawImage(img, 0, 0, c.width, c.height);
   const det = await fwDetector();
   if (!det) return { canvas: c, faces: null };
-  const boxes = det.detect(c).detections.map(d => padBox(d.boundingBox, c.width, c.height, 0.35)).filter(b => b.w > 0 && b.h > 0);
+  const found = det.detect(c).detections.map(d => d.boundingBox);
+  tileRects(c.width, c.height).forEach(t => { // 分區放大 2 倍再偵測
+    const k2 = 640 / Math.max(t.w, t.h), tc = document.createElement('canvas');
+    tc.width = Math.round(t.w * k2); tc.height = Math.round(t.h * k2);
+    tc.getContext('2d').drawImage(c, t.x, t.y, t.w, t.h, 0, 0, tc.width, tc.height);
+    det.detect(tc).detections.forEach(d => { const bb = d.boundingBox; found.push({ originX: t.x + bb.originX / k2, originY: t.y + bb.originY / k2, width: bb.width / k2, height: bb.height / k2 }); });
+  });
+  const boxes = mergeBoxes(found.map(bb => padBox(bb, c.width, c.height, 0.35)).filter(b => b.w > 0 && b.h > 0));
   boxes.forEach(b => { // 馬賽克：縮到很小再放大
     const t = document.createElement('canvas'), n = 10;
     t.width = Math.max(1, Math.round(b.w / Math.max(b.w, b.h) * n)); t.height = Math.max(1, Math.round(b.h / Math.max(b.w, b.h) * n));
@@ -1325,22 +1357,23 @@ function fwFaceNote() {
 function fwDrawCollage() {
   const L = FW_LAYOUT, c = document.createElement('canvas');
   c.width = L.W; c.height = L.H;
-  const g = c.getContext('2d'), ph = L.H - L.band, pw = (L.W - L.gap) / 2;
+  const g = c.getContext('2d'), font = '-apple-system, "PingFang TC", "Noto Sans TC", sans-serif';
   g.fillStyle = '#f6efe6'; g.fillRect(0, 0, L.W, L.H);
-  [[fw.before, 0, 'BEFORE'], [fw.after, pw + L.gap, 'AFTER']].forEach(([src, x, label]) => {
-    const r = coverRect(src.width, src.height, pw, ph);
-    g.drawImage(src, r.sx, r.sy, r.sw, r.sh, x, 0, pw, ph);
-    g.font = '700 34px -apple-system, "PingFang TC", "Noto Sans TC", sans-serif';
+  const slotH = (L.H - L.pad - L.gap - L.foot) / 2, slotW = L.W - L.pad * 2;
+  [[fw.before, L.pad, 'BEFORE'], [fw.after, L.pad + slotH + L.gap, 'AFTER']].forEach(([src, y, label]) => {
+    const r = containRect(src.width, src.height, L.pad, y, slotW, slotH);
+    g.save(); g.beginPath();
+    if (g.roundRect) g.roundRect(r.x, r.y, r.w, r.h, 18); else g.rect(r.x, r.y, r.w, r.h);
+    g.clip(); g.drawImage(src, r.x, r.y, r.w, r.h); g.restore();
+    g.font = '700 32px ' + font;
     const tw = g.measureText(label).width;
     g.fillStyle = 'rgba(74,59,47,.72)';
-    g.beginPath(); if (g.roundRect) g.roundRect(x + 24, 24, tw + 40, 56, 28); else g.rect(x + 24, 24, tw + 40, 56); g.fill();
-    g.fillStyle = '#fff'; g.textBaseline = 'middle'; g.fillText(label, x + 44, 53);
+    g.beginPath(); if (g.roundRect) g.roundRect(r.x + 18, r.y + 18, tw + 36, 52, 26); else g.rect(r.x + 18, r.y + 18, tw + 36, 52); g.fill();
+    g.fillStyle = '#fff'; g.textBaseline = 'middle'; g.fillText(label, r.x + 36, r.y + 45);
   });
-  g.fillStyle = '#8f6b46'; g.fillRect(0, ph, L.W, L.band);
-  g.fillStyle = '#fff'; g.textBaseline = 'middle';
-  g.font = '700 46px -apple-system, "PingFang TC", "Noto Sans TC", sans-serif'; g.fillText('頭沐 | CHIEFROM', 44, ph + L.band / 2);
-  g.font = '400 30px -apple-system, "PingFang TC", "Noto Sans TC", sans-serif';
-  const d = localToday().replace(/-/g, '.'), dw = g.measureText(d).width; g.fillText(d, L.W - 44 - dw, ph + L.band / 2);
+  g.font = '600 30px ' + font; g.fillStyle = 'rgba(143,107,70,.75)'; g.textBaseline = 'middle'; g.textAlign = 'center';
+  g.fillText('頭沐 | CHIEFROM', L.W / 2, L.H - L.foot / 2);
+  g.textAlign = 'left';
   return c;
 }
 async function fwMake() {
